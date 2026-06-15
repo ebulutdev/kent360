@@ -758,52 +758,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         >
           <View style={{ flex: 1, gap: 16 }}>
             
-            {/* 1. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
-            <View style={globalStyles.glassCard}>
-              <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
-              
-              <View style={styles.questionHeaderRow}>
-                <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep].title}</Text>
-                <Text style={styles.questionStepText}>Soru {currentQuestionStep + 1} / {STEPS.length}</Text>
-              </View>
-              
-              <View style={styles.questionProgressBarBg}>
-                <View style={[
-                  styles.questionProgressBarActive,
-                  { width: `${((currentQuestionStep + 1) / STEPS.length) * 100}%` }
-                ]} />
-              </View>
-
-              <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep].question}</Text>
-
-              {/* Soru Seçenekleri / Girişleri */}
-              <View style={styles.controlsSection}>
-                {renderQuestionControls()}
-              </View>
-
-              {/* Onay Sorusu Banner'ı */}
-              {currentQuestionStep === 9 && (
-                <View style={styles.finalQuestionBox}>
-                  <Text style={styles.finalQuestionText}>
-                    Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
-                  </Text>
-                </View>
-              )}
-
-              {/* Devam Et / İleri Butonu */}
-              <TouchableOpacity 
-                style={styles.nextBtn} 
-                onPress={currentQuestionStep === 9 ? handleConfirmSave : handleNextSubStep}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.nextBtnText}>
-                  {currentQuestionStep === 9 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
-                </Text>
-                <ArrowRight size={20} color={COLORS.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* 2. BİNA ÖNİZLEME KARTI */}
+            {/* 1. BİNA ÖNİZLEME KARTI */}
             <View style={[globalStyles.glassCard, styles.previewGlassCard]}>
               <Text style={styles.previewCardTitle}>BİNA MODELİ ÖNİZLEME</Text>
               
@@ -915,6 +870,51 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                   })}
                 </View>
               </View>
+            </View>
+
+            {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
+            <View style={globalStyles.glassCard}>
+              <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
+              
+              <View style={styles.questionHeaderRow}>
+                <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep].title}</Text>
+                <Text style={styles.questionStepText}>Soru {currentQuestionStep + 1} / {STEPS.length}</Text>
+              </View>
+              
+              <View style={styles.questionProgressBarBg}>
+                <View style={[
+                  styles.questionProgressBarActive,
+                  { width: `${((currentQuestionStep + 1) / STEPS.length) * 100}%` }
+                ]} />
+              </View>
+
+              <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep].question}</Text>
+
+              {/* Soru Seçenekleri / Girişleri */}
+              <View style={styles.controlsSection}>
+                {renderQuestionControls()}
+              </View>
+
+              {/* Onay Sorusu Banner'ı */}
+              {currentQuestionStep === 9 && (
+                <View style={styles.finalQuestionBox}>
+                  <Text style={styles.finalQuestionText}>
+                    Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
+                  </Text>
+                </View>
+              )}
+
+              {/* Devam Et / İleri Butonu */}
+              <TouchableOpacity 
+                style={styles.nextBtn} 
+                onPress={currentQuestionStep === 9 ? handleConfirmSave : handleNextSubStep}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.nextBtnText}>
+                  {currentQuestionStep === 9 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
+                </Text>
+                <ArrowRight size={20} color={COLORS.secondary} />
+              </TouchableOpacity>
             </View>
 
           </View>
