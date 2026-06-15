@@ -79,19 +79,24 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
     setLoading(true);
 
     // Helper to recursively clean payload of undefined values which Firestore rejects
-    const cleanPayload = (obj) => {
-      const cleaned = {};
-      Object.keys(obj).forEach(key => {
-        const value = obj[key];
-        if (value === undefined) {
-          cleaned[key] = null;
-        } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-          cleaned[key] = cleanPayload(value);
-        } else {
-          cleaned[key] = value;
-        }
-      });
-      return cleaned;
+    const cleanPayload = (val) => {
+      if (val === undefined) {
+        return null;
+      }
+      if (val === null) {
+        return null;
+      }
+      if (Array.isArray(val)) {
+        return val.map(item => cleanPayload(item));
+      }
+      if (typeof val === 'object') {
+        const cleaned = {};
+        Object.keys(val).forEach(key => {
+          cleaned[key] = cleanPayload(val[key]);
+        });
+        return cleaned;
+      }
+      return val;
     };
 
     const submissionPayload = cleanPayload({
@@ -103,7 +108,7 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
     });
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         console.log("🔥 Mock Firebase Kaydı Yapıldı:", submissionPayload);
         const mockDocId = "mock_doc_id_" + Math.random().toString(36).substring(7);
         const newSubmission = { id: mockDocId, ...submissionPayload };

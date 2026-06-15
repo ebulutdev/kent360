@@ -76,7 +76,7 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
     if (!docId) return;
     setLoadingOffers(true);
     try {
-      if (isMock) {
+      if (isMock || !db) {
         const offersStr = await AsyncStorage.getItem('@global_mock_offers');
         const allOffers = offersStr ? JSON.parse(offersStr) : [];
         const filtered = allOffers.filter(o => o.submissionId === docId);
@@ -136,7 +136,7 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
       let profile = null;
       let projects = [];
 
-      if (isMock || contractorId === 'mock_uid_123') {
+      if (isMock || contractorId === 'mock_uid_123' || !db) {
         profile = {
           uid: contractorId,
           companyName: 'Kent360 İnşaat A.Ş.',
