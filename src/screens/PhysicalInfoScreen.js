@@ -34,6 +34,7 @@ import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import Svg, { Polygon, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 
 const isSmallScreenFallback = false;
+const { width } = Dimensions.get('window');
 
 // Emojiler ve Renk İndikatörleri
 const UNIT_METADATA = {
