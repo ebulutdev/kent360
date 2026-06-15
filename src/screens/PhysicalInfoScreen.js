@@ -440,6 +440,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 0: // Kat Sayısı
         return (
           <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>KAT SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -461,6 +462,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 1: // Katta Daire Sayısı
         return (
           <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>DAİRE SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -510,6 +512,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 3: // Zemin Kat Birim Sayısı
         return (
           <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>{hasGroundShop ? 'DÜKKAN SAYISI' : 'DAİRE SAYISI'}</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -531,6 +534,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 4: // Bodrum Kat Sayısı
         return (
           <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>BODRUM KAT SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -599,6 +603,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 6: // Ortalama m2
         return (
           <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>ORTALAMA DAİRE ALANI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -732,17 +737,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
             <Text style={styles.backBtnText}>Geri</Text>
           </TouchableOpacity>
 
-          {/* Stepper showing dynamic question progress */}
+          {/* Stepper showing global wizard progress (Stage 2: Building Design) */}
           <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
-            {Array.from({ length: STEPS.length }).map((_, i) => {
-              let style = globalStyles.stepIndicator;
-              if (i < currentQuestionStep) {
-                style = [globalStyles.stepIndicator, globalStyles.stepIndicatorCompleted];
-              } else if (i === currentQuestionStep) {
-                style = [globalStyles.stepIndicator, globalStyles.stepIndicatorActive];
-              }
-              return <View key={i} style={style} />;
-            })}
+            <View style={[globalStyles.stepIndicator, globalStyles.stepIndicatorCompleted]} />
+            <View style={[globalStyles.stepIndicator, globalStyles.stepIndicatorActive]} />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <View key={i} style={globalStyles.stepIndicator} />
+            ))}
           </View>
         </View>
 
@@ -760,12 +761,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
             <View style={globalStyles.glassCard}>
               <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
               
-              <Text style={globalStyles.title}>
-                {STEPS[currentQuestionStep].title}
-              </Text>
-              <Text style={globalStyles.subtitle}>
-                {STEPS[currentQuestionStep].question}
-              </Text>
+              <View style={styles.questionHeaderRow}>
+                <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep].title}</Text>
+                <Text style={styles.questionStepText}>Soru {currentQuestionStep + 1} / {STEPS.length}</Text>
+              </View>
+              
+              <View style={styles.questionProgressBarBg}>
+                <View style={[
+                  styles.questionProgressBarActive,
+                  { width: `${((currentQuestionStep + 1) / STEPS.length) * 100}%` }
+                ]} />
+              </View>
+
+              <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep].question}</Text>
 
               {/* Soru Seçenekleri / Girişleri */}
               <View style={styles.controlsSection}>
@@ -1153,6 +1161,50 @@ const styles = StyleSheet.create({
   counterWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  counterSubLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    color: COLORS.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 10,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  questionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  questionTitleText: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+    color: COLORS.textLight,
+  },
+  questionStepText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: COLORS.primary,
+  },
+  questionProgressBarBg: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    marginBottom: 16,
+    width: '100%',
+  },
+  questionProgressBarActive: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+  },
+  questionSubtitleText: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: COLORS.textMuted,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   counterControls: {
     flexDirection: 'row',
