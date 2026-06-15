@@ -38,6 +38,7 @@ const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const insets = useSafeAreaInsets();
+
   // Get first deed/floor info if available to pre-populate ProfileScreen
   const firstDeed = useMemo(() => {
     const deedsList = Object.values(data.deeds || {});
@@ -77,11 +78,10 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     data.isMansart !== undefined ? data.isMansart : (hasMansartRoof || false)
   );
 
-  // Local width/depth states for typing responsiveness, committed to main states onEndEditing/Blur
-  const [localWidth, setLocalWidth] = useState(data.width ? String(data.width) : '28');
-  const [localDepth, setLocalDepth] = useState(data.depth ? String(data.depth) : '30');
   const [buildingWidth, setBuildingWidth] = useState(data.width || 28);
   const [buildingDepth, setBuildingDepth] = useState(data.depth || 30);
+  const [localWidth, setLocalWidth] = useState(data.width ? String(data.width) : '28');
+  const [localDepth, setLocalDepth] = useState(data.depth ? String(data.depth) : '30');
 
   // Facades layout configuration
   const [facades, setFacades] = useState(data.facades || {
@@ -91,13 +91,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     right: { type: 'ekle', name: '', distance: '' }
   });
 
-  // Modal selector state
-  const [facadeModalOpen, setFacadeModalOpen] = useState(false);
-  const [infoModalOpen, setInfoModalOpen] = useState(false);
-  const [activeFacadeKey, setActiveFacadeKey] = useState(null); // 'top' | 'bottom' | 'left' | 'right'
-  const [modalType, setModalType] = useState('ekle');
-  const [modalName, setModalName] = useState('');
-  const [modalDistance, setModalDistance] = useState('');
+  const [currentQuestionStep, setCurrentQuestionStep] = useState(0);
 
   // Haptic feedback helper
   const triggerHaptic = () => {
@@ -108,94 +102,69 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     }
   };
 
-  // Helper info dialogs for tooltips
-  const showInfoAlert = (title, message) => {
-    triggerHaptic();
-    Alert.alert(
-      title,
-      message,
-      [{ text: 'Anladım', style: 'cancel' }],
-      { cancelable: true }
-    );
-  };
-
-  // Stepper increment/decrement handlers
-  const handleFloorsChange = (change) => {
-    triggerHaptic();
-    setFloorsCount(prev => Math.max(1, Math.min(20, prev + change)));
-  };
-
-  const toggleMutType = (type) => {
-    triggerHaptic();
-    if (type === 'MÜT YOK') {
-      Alert.alert(
-        'Müteahhit Pay Durumu',
-        'Müteahhite paysız devam etmek istediğinizden emin misiniz?',
-        [
-          { text: 'Hayır', style: 'cancel' },
-          { text: 'Evet', onPress: () => setMutType('MÜT YOK') }
-        ],
-        { cancelable: false }
-      );
-    } else {
-      setMutType(type);
+  // Restore state from previously saved data on mount
+  const hasInitialized = useRef(false);
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    if (data.mutType) setMutType(data.mutType);
+    if (data.width) {
+      setBuildingWidth(data.width);
+      setLocalWidth(String(data.width));
     }
-  };
-
-  const handleMansartToggle = (val) => {
-    triggerHaptic();
-    setIsMansart(val);
-  };
-
-  // Dimensions blur commits
-  const handleWidthBlur = () => {
-    const parsed = parseFloat(localWidth) || 0;
-    if (parsed > 0) {
-      setBuildingWidth(parsed);
-    } else {
-      setLocalWidth(String(buildingWidth));
+    if (data.depth) {
+      setBuildingDepth(data.depth);
+      setLocalDepth(String(data.depth));
     }
-  };
-
-  const handleDepthBlur = () => {
-    const parsed = parseFloat(localDepth) || 0;
-    if (parsed > 0) {
-      setBuildingDepth(parsed);
-    } else {
-      setLocalDepth(String(buildingDepth));
-    }
-  };
+    if (data.facades) setFacades(data.facades);
+    if (data.adaNo) setAdaNo(data.adaNo);
+    if (data.parselNo) setParselNo(data.parselNo);
+    if (data.floorsCount) setFloorsCount(data.floorsCount);
+    if (data.isMansart !== undefined) setIsMansart(data.isMansart);
+    hasInitialized.current = true;
+  }, [data]);
 
   // Computed total area
   const totalArea = useMemo(() => {
     return Math.round(buildingWidth * buildingDepth);
   }, [buildingWidth, buildingDepth]);
 
-  // Open configuration for surrounding facade
-  const openFacadeEditor = (key) => {
+  // Handle facade option changes inline
+  const handleFacadeTypeSelect = (direction, type) => {
     triggerHaptic();
-    setActiveFacadeKey(key);
-    const current = facades[key] || { type: 'ekle', name: '', distance: '' };
-    setModalType(current.type);
-    setModalName(current.name || '');
-    setModalDistance(current.distance || '');
-    setFacadeModalOpen(true);
+    setFacades(prev => {
+      const current = prev[direction] || { type: 'ekle', name: '', distance: '' };
+      return {
+        ...prev,
+        [direction]: {
+          type,
+          name: type === 'ekle' ? '' : (current.type === type ? current.name : ''),
+          distance: type === 'bahce' ? (current.type === type ? current.distance : '') : ''
+        }
+      };
+    });
   };
 
-  // Save selected facade config
-  const saveFacadeConfig = () => {
-    triggerHaptic();
+  const handleFacadeNameChange = (direction, name) => {
     setFacades(prev => ({
       ...prev,
-      [activeFacadeKey]: {
-        type: modalType,
-        name: modalType === 'ekle' ? '' : modalName,
-        distance: (modalType === 'bahce' && modalDistance) ? (modalDistance.endsWith('m') ? modalDistance : `${modalDistance}m`) : ''
+      [direction]: {
+        ...(prev[direction] || { type: 'ekle', distance: '' }),
+        name
       }
     }));
-    setFacadeModalOpen(false);
   };
 
+  const handleFacadeDistanceChange = (direction, distance) => {
+    setFacades(prev => ({
+      ...prev,
+      [direction]: {
+        ...(prev[direction] || { type: 'ekle', name: '' }),
+        distance
+      }
+    }));
+  };
+
+  // Submit and proceed to next screen
   const handleNextSubmit = () => {
     triggerHaptic();
 
@@ -242,41 +211,76 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     }
   };
 
-  // Sliders background animation hooks
-  const mutSlideAnim = useRef(new Animated.Value(mutType === 'MÜT D' ? 0 : (mutType === 'MÜT P' ? 1 : 2))).current;
-  useEffect(() => {
-    let toValue = 0;
-    if (mutType === 'MÜT P') toValue = 1;
-    else if (mutType === 'MÜT YOK') toValue = 2;
-    Animated.spring(mutSlideAnim, {
-      toValue,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 50
-    }).start();
-  }, [mutType]);
+  // Steps configuration
+  const STEPS = useMemo(() => [
+    {
+      title: 'Hesaplama Tipi',
+      question: 'Projenizde müteahhit payı hesaplama modelini seçiniz.',
+      key: 'mutType'
+    },
+    {
+      title: 'Bina Genişliği (En)',
+      question: 'Binanızın yatay genişliği (en) kaç metredir?',
+      key: 'width'
+    },
+    {
+      title: 'Bina Derinliği (Boy)',
+      question: 'Binanızın derinliği (boy) kaç metredir?',
+      key: 'depth'
+    },
+    {
+      title: 'Üst Cephe Durumu',
+      question: 'Binanızın üst (kuzey) cephesinde ne bulunuyor?',
+      key: 'facade_top',
+      direction: 'top'
+    },
+    {
+      title: 'Alt Cephe Durumu',
+      question: 'Binanızın alt (güney) cephesinde ne bulunuyor?',
+      key: 'facade_bottom',
+      direction: 'bottom'
+    },
+    {
+      title: 'Sol Cephe Durumu',
+      question: 'Binanızın sol (batı) cephesinde ne bulunuyor?',
+      key: 'facade_left',
+      direction: 'left'
+    },
+    {
+      title: 'Sağ Cephe Durumu',
+      question: 'Binanızın sağ (doğu) cephesinde ne bulunuyor?',
+      key: 'facade_right',
+      direction: 'right'
+    },
+    {
+      title: 'Onay ve Kontrol',
+      question: 'Oluşturduğunuz parsel ve cephe modeli aşağıdaki gibidir. Onaylıyor musunuz?',
+      key: 'confirmation'
+    }
+  ], []);
 
-  const mansartSlideAnim = useRef(new Animated.Value(isMansart ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.spring(mansartSlideAnim, {
-      toValue: isMansart ? 1 : 0,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 50
-    }).start();
-  }, [isMansart]);
+  const handleNextSubStep = () => {
+    triggerHaptic();
+    const next = currentQuestionStep + 1;
+    if (next < STEPS.length) {
+      setCurrentQuestionStep(next);
+    }
+  };
 
-  const mutIndicatorLeft = mutSlideAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: ['1%', '34.3%', '67.6%']
-  });
+  const handleBackSubStep = () => {
+    triggerHaptic();
+    const prev = currentQuestionStep - 1;
+    if (prev >= 0) {
+      setCurrentQuestionStep(prev);
+    } else {
+      onBack();
+    }
+  };
 
-  const mansartIndicatorLeft = mansartSlideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['1%', '51%']
-  });
-
-
+  const handleCenterBoxPress = () => {
+    triggerHaptic();
+    setCurrentQuestionStep(1); // Jump to width step
+  };
 
   // Helper renderers for blueprint styling
   const renderGridLines = () => {
@@ -357,11 +361,19 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     const facade = facades[key] || { type: 'ekle', name: '', distance: '' };
     const isHorizontal = key === 'top' || key === 'bottom';
 
+    const handlePress = () => {
+      triggerHaptic();
+      const stepIdx = STEPS.findIndex(s => s.direction === key);
+      if (stepIdx !== -1) {
+        setCurrentQuestionStep(stepIdx);
+      }
+    };
+
     if (facade.type === 'ekle') {
       return (
         <TouchableOpacity
           style={[styles.facadeSlot, styles.facadeAdd, positionStyles]}
-          onPress={() => openFacadeEditor(key)}
+          onPress={handlePress}
           activeOpacity={0.8}
         >
           <Plus size={10} color={COLORS.primary} style={{ marginBottom: 2 }} />
@@ -374,7 +386,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       return (
         <TouchableOpacity
           style={[styles.facadeSlot, styles.facadeBitisik, positionStyles]}
-          onPress={() => openFacadeEditor(key)}
+          onPress={handlePress}
           activeOpacity={0.8}
         >
           {renderHatchLines()}
@@ -388,7 +400,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       return (
         <TouchableOpacity
           style={[styles.facadeSlot, styles.facadeBahce, positionStyles]}
-          onPress={() => openFacadeEditor(key)}
+          onPress={handlePress}
           activeOpacity={0.8}
         >
           {renderTrees()}
@@ -403,7 +415,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       return (
         <TouchableOpacity
           style={[styles.facadeSlot, styles.facadeArsa, positionStyles]}
-          onPress={() => openFacadeEditor(key)}
+          onPress={handlePress}
           activeOpacity={0.8}
         >
           <Text style={styles.facadeArsaText}>BOŞ ARSA</Text>
@@ -415,7 +427,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       return (
         <TouchableOpacity
           style={[styles.facadeSlot, styles.facadeYol, positionStyles]}
-          onPress={() => openFacadeEditor(key)}
+          onPress={handlePress}
           activeOpacity={0.8}
         >
           <View style={isHorizontal ? styles.roadLineHorizontal : styles.roadLineVertical} />
@@ -429,353 +441,370 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     return null;
   };
 
-  // Shared form inputs renderer for space efficiency
-  const renderFormFields = () => {
-    return (
-      <View style={styles.formFieldsInner}>
-        {/* 1. Müteahhit Payı Bilgisi */}
-        <Text style={styles.compactGroupHeader}>1. MÜTEAHHİT PAYI HESAPLAMA TİPİ</Text>
+  // Rendering custom input controls based on active sub-step
+  const renderQuestionControls = () => {
+    const activeStep = STEPS[currentQuestionStep];
+    if (!activeStep) return null;
 
-        <View style={styles.labelWithHelp}>
-          <Text style={styles.compactInputLabel}>Hesaplama Tipi</Text>
-          <TouchableOpacity onPress={() => showInfoAlert('Müteahhit Payı Tipi', 'MÜT D (Daire Payı): Müteahhide verilecek bağımsız bölüm daire adedini temel alır.\nMÜT P (Pay Oranı): Toplam inşaat alanının müteahhide ait olan yüzdelik (%) oranını belirtir.\nMÜT YOK (Paysız): Müteahhit payı olmadığını belirtir.')}>
-            <HelpCircle size={13} color={COLORS.textMuted} style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
+    if (activeStep.direction) {
+      const direction = activeStep.direction;
+      const facade = facades[direction] || { type: 'ekle', name: '', distance: '' };
+      return (
+        <View style={{ width: '100%' }}>
+          <View style={styles.optionsGrid}>
+            {[
+              { type: 'ekle', label: 'Birşey Yok / Boş', desc: 'Cepheyi boşta bırak' },
+              { type: 'bitisik', label: 'Bitişik Bina (Kör Cephe)', desc: 'Bitişik ortak yangın duvarı' },
+              { type: 'bahce', label: 'Bahçe / Ortak Bahçe', desc: 'Yeşil alan veya park alanı' },
+              { type: 'arsa', label: 'Boş Arsa', desc: 'Yapılaşmamış açık alan' },
+              { type: 'yol', label: 'Yol / Sokak', desc: 'İsimlendirilebilir kamu yolu' }
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.type}
+                style={[
+                  styles.optionButton,
+                  facade.type === opt.type && styles.optionButtonActive
+                ]}
+                onPress={() => handleFacadeTypeSelect(direction, opt.type)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  facade.type === opt.type && styles.optionButtonTextActive
+                ]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {facade.type === 'yol' && (
+            <View style={styles.inlineInputWrapper}>
+              <Text style={styles.inlineInputLabel}>YOL / SOKAK ADI</Text>
+              <TextInput
+                style={styles.inlineTextInput}
+                placeholder="Örn: Dede Korkut Sk."
+                placeholderTextColor="#94A3B8"
+                value={facade.name}
+                onChangeText={(text) => handleFacadeNameChange(direction, text)}
+              />
+            </View>
+          )}
+
+          {facade.type === 'bahce' && (
+            <View style={styles.inlineInputWrapper}>
+              <Text style={styles.inlineInputLabel}>BAHÇE ADI</Text>
+              <TextInput
+                style={styles.inlineTextInput}
+                placeholder="Örn: Ortak Bahçe veya İmar Bahçesi"
+                placeholderTextColor="#94A3B8"
+                value={facade.name}
+                onChangeText={(text) => handleFacadeNameChange(direction, text)}
+              />
+              <Text style={[styles.inlineInputLabel, { marginTop: 10 }]}>MESAFE UZUNLUĞU</Text>
+              <TextInput
+                style={styles.inlineTextInput}
+                placeholder="Örn: 28m veya 5m"
+                placeholderTextColor="#94A3B8"
+                value={facade.distance}
+                onChangeText={(text) => handleFacadeDistanceChange(direction, text)}
+              />
+            </View>
+          )}
         </View>
+      );
+    }
 
-        <View style={styles.mutSegmentContainer}>
-          <Animated.View style={[styles.segmentIndicator, { left: mutIndicatorLeft, width: '31.4%' }]} />
-          <TouchableOpacity
-            style={styles.mutSegmentBtn}
-            onPress={() => toggleMutType('MÜT D')}
-            activeOpacity={0.8}
-          >
-            <Home size={12} color={mutType === 'MÜT D' ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 4 }} />
-            <View>
-              <Text style={[styles.mutSegmentText, mutType === 'MÜT D' && styles.mutSegmentTextActive]}>MÜT D</Text>
-              <Text style={styles.mutSegmentDesc}>Daire</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.mutSegmentBtn}
-            onPress={() => toggleMutType('MÜT P')}
-            activeOpacity={0.8}
-          >
-            <Percent size={12} color={mutType === 'MÜT P' ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 4 }} />
-            <View>
-              <Text style={[styles.mutSegmentText, mutType === 'MÜT P' && styles.mutSegmentTextActive]}>MÜT P</Text>
-              <Text style={styles.mutSegmentDesc}>Pay %</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.mutSegmentBtn}
-            onPress={() => toggleMutType('MÜT YOK')}
-            activeOpacity={0.8}
-          >
-            <X size={12} color={mutType === 'MÜT YOK' ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 4 }} />
-            <View>
-              <Text style={[styles.mutSegmentText, mutType === 'MÜT YOK' && styles.mutSegmentTextActive]}>MÜT YOK</Text>
-              <Text style={styles.mutSegmentDesc}>Paysız</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+    switch (activeStep.key) {
+      case 'mutType':
+        return (
+          <View style={styles.optionsGrid}>
+            {[
+              { type: 'MÜT D', label: 'MÜT D (Daire Payı)', desc: 'Müteahhide verilecek bağımsız bölüm daire adedini temel alır.' },
+              { type: 'MÜT P', label: 'MÜT P (Pay Oranı %)', desc: 'Müteahhit inşaat alanı paylaşım yüzdesini (%) temel alır.' },
+              { type: 'MÜT YOK', label: 'MÜT YOK (Paysız)', desc: 'Müteahhit payı olmadığını belirtir. Proje malikler tarafından karşılanır.' }
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.type}
+                style={[
+                  styles.optionButton,
+                  mutType === opt.type && styles.optionButtonActive
+                ]}
+                onPress={() => setMutType(opt.type)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  mutType === opt.type && styles.optionButtonTextActive
+                ]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
 
-        {/* 2. Ölçülendirme */}
-        <Text style={styles.compactGroupHeader}>2. BİNA ÖLÇÜLERİ</Text>
-
-        <View style={styles.inputsGridCompact}>
-          <View style={[styles.compactCol, { marginRight: 4 }]}>
-            <View style={styles.labelWithHelp}>
-              <Text style={styles.compactInputLabel}>Genişlik En (m)</Text>
-              <TouchableOpacity onPress={() => showInfoAlert('Genişlik En', 'Bina veya arsanızın yatay (en) genişliğidir. Değiştirdiğinizde kroki en-boy oranına göre dinamik olarak güncellenir.')}>
-                <HelpCircle size={11} color={COLORS.textMuted} style={{ marginLeft: 3 }} />
+      case 'width':
+        return (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>YATAY GENİŞLİK (EN)</Text>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setBuildingWidth(prev => {
+                    const val = Math.max(10, prev - 1);
+                    setLocalWidth(String(val));
+                    return val;
+                  });
+                }}
+              >
+                <Minus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.counterValue}>{buildingWidth} m</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setBuildingWidth(prev => {
+                    const val = Math.min(100, prev + 1);
+                    setLocalWidth(String(val));
+                    return val;
+                  });
+                }}
+              >
+                <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.textInputStyleCompact}
-              placeholder="En"
-              placeholderTextColor="#94A3B8"
-              value={localWidth}
-              onChangeText={setLocalWidth}
-              keyboardType="decimal-pad"
-              onEndEditing={handleWidthBlur}
-              onBlur={handleWidthBlur}
-            />
           </View>
-          <View style={[styles.compactCol, { marginLeft: 4 }]}>
-            <View style={styles.labelWithHelp}>
-              <Text style={styles.compactInputLabel}>Derinlik Boy (m)</Text>
-              <TouchableOpacity onPress={() => showInfoAlert('Derinlik Boy', 'Bina veya arsanızın derinlik (boy) uzunluğudur. Değiştirdiğinizde kroki en-boy oranına göre dinamik olarak güncellenir.')}>
-                <HelpCircle size={11} color={COLORS.textMuted} style={{ marginLeft: 3 }} />
+        );
+
+      case 'depth':
+        return (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>DÜŞEY DERİNLİK (BOY)</Text>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setBuildingDepth(prev => {
+                    const val = Math.max(10, prev - 1);
+                    setLocalDepth(String(val));
+                    return val;
+                  });
+                }}
+              >
+                <Minus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.counterValue}>{buildingDepth} m</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setBuildingDepth(prev => {
+                    const val = Math.min(100, prev + 1);
+                    setLocalDepth(String(val));
+                    return val;
+                  });
+                }}
+              >
+                <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.textInputStyleCompact}
-              placeholder="Boy"
-              placeholderTextColor="#94A3B8"
-              value={localDepth}
-              onChangeText={setLocalDepth}
-              keyboardType="decimal-pad"
-              onEndEditing={handleDepthBlur}
-              onBlur={handleDepthBlur}
-            />
           </View>
-        </View>
+        );
 
-        {/* Toplam Alan Göstergesi */}
-        <View style={styles.areaRowBoxCompact}>
-          <Text style={styles.areaRowLabelCompact}>TOPLAM HESAPLANAN ALAN</Text>
-          <Text style={styles.areaRowValCompact}>{totalArea} m²</Text>
-        </View>
-      </View>
-    );
+      case 'confirmation':
+        return (
+          <ScrollView style={styles.summaryScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Ada / Parsel No:</Text>
+                <Text style={styles.summaryValueText}>{adaNo} / {parselNo}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Hesaplama Tipi:</Text>
+                <Text style={styles.summaryValueText}>{mutType}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Bina Ölçüleri:</Text>
+                <Text style={styles.summaryValueText}>{buildingWidth}m x {buildingDepth}m ({totalArea} m²)</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Üst (Kuzey) Cephe:</Text>
+                <Text style={styles.summaryValueText}>
+                  {facades.top.type === 'ekle' ? 'Boş' : (facades.top.type === 'bitisik' ? 'Bitişik Bina' : (facades.top.type === 'bahce' ? `Bahçe (${facades.top.name})` : (facades.top.type === 'arsa' ? 'Boş Arsa' : `Yol (${facades.top.name})`)))}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Alt (Güney) Cephe:</Text>
+                <Text style={styles.summaryValueText}>
+                  {facades.bottom.type === 'ekle' ? 'Boş' : (facades.bottom.type === 'bitisik' ? 'Bitişik Bina' : (facades.bottom.type === 'bahce' ? `Bahçe (${facades.bottom.name})` : (facades.bottom.type === 'arsa' ? 'Boş Arsa' : `Yol (${facades.bottom.name})`)))}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Sol (Batı) Cephe:</Text>
+                <Text style={styles.summaryValueText}>
+                  {facades.left.type === 'ekle' ? 'Boş' : (facades.left.type === 'bitisik' ? 'Bitişik Bina' : (facades.left.type === 'bahce' ? `Bahçe (${facades.left.name})` : (facades.left.type === 'arsa' ? 'Boş Arsa' : `Yol (${facades.left.name})`)))}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Sağ (Doğu) Cephe:</Text>
+                <Text style={styles.summaryValueText}>
+                  {facades.right.type === 'ekle' ? 'Boş' : (facades.right.type === 'bitisik' ? 'Bitişik Bina' : (facades.right.type === 'bahce' ? `Bahçe (${facades.right.name})` : (facades.right.type === 'arsa' ? 'Boş Arsa' : `Yol (${facades.right.name})`)))}
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bgDark }}>
-        <View style={[styles.screenWrapper, { paddingTop: insets.top > 0 ? insets.top + 8 : 8 }]}>
+        <View style={styles.screenWrapper}>
           <View style={styles.glow} />
 
-          {/* Header Box */}
-          <View style={styles.blueprintTitleBoxCompact}>
-            <TouchableOpacity style={styles.compactBackBtn} onPress={onBack}>
-              <ArrowLeft size={16} color={COLORS.textLight} />
+          {/* FIXED HEADER at the top */}
+          <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 16 }}>
+            {/* Geri Butonu */}
+            <TouchableOpacity style={styles.backBtn} onPress={handleBackSubStep}>
+              <ArrowLeft size={20} color={COLORS.textLight} />
+              <Text style={styles.backBtnText}>Geri</Text>
             </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.blueprintTitleText}>PARSEL & CEPHE MODELLEME (2D)</Text>
-              <Text style={styles.blueprintScaleText}>ÖLÇEK: DİNAMİK</Text>
+
+            {/* Stepper showing global wizard progress (Stage 5: Parsel & Cephe) */}
+            <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <View key={i} style={[globalStyles.stepIndicator, globalStyles.stepIndicatorCompleted]} />
+              ))}
+              <View style={[globalStyles.stepIndicator, globalStyles.stepIndicatorActive]} />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <View key={i} style={globalStyles.stepIndicator} />
+              ))}
             </View>
           </View>
 
-          {/* Progress Stepper */}
-          <View style={styles.mobileStepperContainer}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <View key={i} style={[globalStyles.stepIndicator, globalStyles.stepIndicatorCompleted, { height: 3 }]} />
-            ))}
-            <View style={[globalStyles.stepIndicator, globalStyles.stepIndicatorActive, { height: 3 }]} />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <View key={i} style={[globalStyles.stepIndicator, { height: 3 }]} />
-            ))}
-          </View>
 
-          {/* Subtitle Description */}
-          <View style={styles.headerSubtitleBox}>
-            <Text style={styles.headerSubtitleText}>
-              Bina imar durumu ve cephe ilişkilerini görsel olarak inceleyin. Bilgileri düzenlemek için "Bilgiler" butonuna tıklayabilirsiniz.
-            </Text>
-          </View>
+          {/* Main Content inside ScrollView */}
+          <ScrollView
+            contentContainerStyle={[
+              styles.mobileScrollContainer,
+              { paddingTop: 4, paddingBottom: 40 }
+            ]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={{ gap: 16, paddingHorizontal: 16 }}>
+              {/* 1. PARSEL VE CEPHE ÖNİZLEME KARTI */}
+              <View style={[globalStyles.glassCard, styles.previewGlassCard]}>
+                <Text style={styles.previewCardTitle}>PARSEL VE CEPHE ÖNİZLEME (2D)</Text>
 
-          {/* Centered 2D Visualizer Area */}
-          <View style={styles.centeredVisualizerWrapper}>
-            <View style={styles.krokiContainer}>
-              {renderGridLines()}
+                <View style={styles.centeredVisualizerWrapper}>
+                  <View style={styles.krokiContainer}>
+                    {renderGridLines()}
 
-              {/* Drafting Crosshairs */}
-              <View style={[styles.crosshair, styles.chTopLeft]} />
-              <View style={[styles.crosshair, styles.chTopRight]} />
-              <View style={[styles.crosshair, styles.chBottomLeft]} />
-              <View style={[styles.crosshair, styles.chBottomRight]} />
+                    {/* Drafting Crosshairs */}
+                    <View style={[styles.crosshair, styles.chTopLeft]} />
+                    <View style={[styles.crosshair, styles.chTopRight]} />
+                    <View style={[styles.crosshair, styles.chBottomLeft]} />
+                    <View style={[styles.crosshair, styles.chBottomRight]} />
 
-              {/* Surrounding Facades */}
-              {renderFacadeSlot('top', styles.posTop)}
-              {renderFacadeSlot('bottom', styles.posBottom)}
-              {renderFacadeSlot('left', styles.posLeft)}
-              {renderFacadeSlot('right', styles.posRight)}
+                    {/* Surrounding Facades */}
+                    {renderFacadeSlot('top', styles.posTop)}
+                    {renderFacadeSlot('bottom', styles.posBottom)}
+                    {renderFacadeSlot('left', styles.posLeft)}
+                    {renderFacadeSlot('right', styles.posRight)}
 
-              {/* Dimension Containers */}
-              <View style={styles.dimHeightContainer}>
-                <Text style={styles.dimText} numberOfLines={1}>{buildingDepth}m</Text>
+                    {/* Dimension Containers */}
+                    <View style={styles.dimHeightContainer}>
+                      <Text style={styles.dimText} numberOfLines={1}>{buildingDepth}m</Text>
+                    </View>
+                    <View style={styles.dimWidthContainer}>
+                      <Text style={styles.dimText}>{buildingWidth}m</Text>
+                    </View>
+
+                    {/* Main Center Plot */}
+                    <TouchableOpacity
+                      style={styles.centerBuildingBox}
+                      onPress={handleCenterBoxPress}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.titleLabel}>PARSEL DETAYI</Text>
+                      <Text style={styles.mainInfo}>ADA {adaNo} / PARSEL {parselNo}</Text>
+
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{totalArea} m²</Text>
+                      </View>
+
+                      <Text style={styles.subText}>{buildingWidth}m x {buildingDepth}m</Text>
+                      <Text style={styles.subText}>
+                        {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
+                      </Text>
+                      <Text style={styles.subTextMuted}>Hesap Tipi: {mutType}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-              <View style={styles.dimWidthContainer}>
-                <Text style={styles.dimText}>{buildingWidth}m</Text>
-              </View>
 
-              {/* Main Center Plot */}
-              <View style={styles.centerBuildingBox}>
-                <Text style={styles.titleLabel}>PARSEL DETAYI</Text>
-                <Text style={styles.mainInfo}>ADA {adaNo} / PARSEL {parselNo}</Text>
+              {/* 2. SORU/CEVAP KARTI */}
+              <View style={globalStyles.glassCard}>
+                <Text style={styles.stepTitle}>PARSEL CEPHE MODELLEME</Text>
 
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{totalArea} m²</Text>
+                <View style={styles.questionHeaderRow}>
+                  <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep]?.title}</Text>
+                  <Text style={styles.questionStepText}>Soru {currentQuestionStep + 1} / {STEPS.length}</Text>
                 </View>
 
-                <Text style={styles.subText}>{buildingWidth}m x {buildingDepth}m</Text>
-                <Text style={styles.subText}>
-                  {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
-                </Text>
-                <Text style={styles.subTextMuted}>Hesap Tipi: {mutType}</Text>
+                <View style={styles.questionProgressBarBg}>
+                  <View style={[
+                    styles.questionProgressBarActive,
+                    { width: `${((currentQuestionStep + 1) / STEPS.length) * 100}%` }
+                  ]} />
+                </View>
+
+                <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep]?.question}</Text>
+
+                {/* Soru Seçenekleri / Girişleri */}
+                <View style={styles.controlsSection}>
+                  {renderQuestionControls()}
+                </View>
+
+                {/* Onay Sorusu Banner'ı */}
+                {currentQuestionStep === STEPS.length - 1 && (
+                  <View style={styles.finalQuestionBox}>
+                    <Text style={styles.finalQuestionText}>
+                      Oluşturduğunuz parsel profili sizin parseliniz ile aynı mı? Onaylıyor musunuz?
+                    </Text>
+                  </View>
+                )}
+
+                {/* Devam Et / İleri Butonu */}
+                <TouchableOpacity
+                  style={styles.nextBtn}
+                  onPress={currentQuestionStep === STEPS.length - 1 ? handleNextSubmit : handleNextSubStep}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.nextBtnText}>
+                    {currentQuestionStep === STEPS.length - 1 ? 'Evet, Bina Profilini Onayla (Devam Et)' : 'Devam Et'}
+                  </Text>
+                  <ArrowRight size={20} color={COLORS.secondary} />
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-
-          {/* Bottom Button Row */}
-          <View style={styles.bottomButtonsRow}>
-            {/* Bilgiler button */}
-            <TouchableOpacity
-              style={styles.infoOpenBtn}
-              onPress={() => setInfoModalOpen(true)}
-              activeOpacity={0.8}
-            >
-              <FileText size={18} color="#D97706" style={{ marginRight: 6 }} />
-              <Text style={styles.infoOpenBtnText}>Bilgiler</Text>
-            </TouchableOpacity>
-
-            {/* Bina Profilini Onayla ve Devam Et button */}
-            <TouchableOpacity
-              style={styles.confirmSubmitBtn}
-              onPress={handleNextSubmit}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.confirmSubmitBtnText}>Bina Profilini Onayla</Text>
-              <ArrowRight size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       </SafeAreaView>
-
-      {/* PARAMETERS CONFIG MODAL */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={infoModalOpen}
-        onRequestClose={() => setInfoModalOpen(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setInfoModalOpen(false)}
-        >
-          <TouchableWithoutFeedback>
-            <View style={[styles.modalContent, styles.infoModalContent]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Bina Ölçüleri & Müteahhit Payı</Text>
-                <TouchableOpacity onPress={() => setInfoModalOpen(false)}>
-                  <X size={18} color={COLORS.textLight} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={styles.modalFormScroll}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                {renderFormFields()}
-              </ScrollView>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalConfirmBtn}
-                  onPress={() => setInfoModalOpen(false)}
-                >
-                  <Text style={styles.modalConfirmBtnText}>Kaydet</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* SURROUNDING FACADE EDIT POPUP MODAL */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={facadeModalOpen}
-        onRequestClose={() => setFacadeModalOpen(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setFacadeModalOpen(false)}
-        >
-          <TouchableWithoutFeedback>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Cephe Durumu Seçin</Text>
-                <TouchableOpacity onPress={() => setFacadeModalOpen(false)}>
-                  <X size={18} color={COLORS.textLight} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalOptionsScroll} showsVerticalScrollIndicator={false}>
-                {[
-                  { key: 'ekle', label: '➕ Birim Yok / Boş', desc: 'Cepheyi boşta bırak' },
-                  { key: 'bitisik', label: '🏠 Bitişik Bina (Kör Cephe)', desc: 'Bitişik ortak yangın duvarı' },
-                  { key: 'bahce', label: '🌳 Bahçe / Ortak Bahçe', desc: 'Yeşil alan veya park alanı' },
-                  { key: 'arsa', label: '⬜ Boş Arsa', desc: 'Yapılaşmamış açık alan' },
-                  { key: 'yol', label: '🛣️ Yol / Sokak', desc: 'İsimlendirilebilir kamu yolu' }
-                ].map(opt => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[styles.modalItem, modalType === opt.key && styles.modalItemActive]}
-                    onPress={() => setModalType(opt.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.modalItemText, modalType === opt.key && styles.modalItemTextActive]}>
-                      {opt.label}
-                    </Text>
-                    <Text style={styles.modalItemDesc}>{opt.desc}</Text>
-                  </TouchableOpacity>
-                ))}
-
-                {modalType === 'yol' && (
-                  <View style={styles.modalInputWrapper}>
-                    <Text style={styles.modalInputLabel}>Yol / Sokak Adı</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      placeholder="Örn: Dede Korkut Sk."
-                      placeholderTextColor="#94A3B8"
-                      value={modalName}
-                      onChangeText={setModalName}
-                    />
-                  </View>
-                )}
-
-                {modalType === 'bahce' && (
-                  <View style={styles.modalInputWrapper}>
-                    <Text style={styles.modalInputLabel}>Bahçe Adı / Mesafe</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      placeholder="Örn: Ortak Bahçe veya 5m"
-                      placeholderTextColor="#94A3B8"
-                      value={modalName}
-                      onChangeText={setModalName}
-                    />
-                    <Text style={[styles.modalInputLabel, { marginTop: 6 }]}>Mesafe Uzunluğu (İsteğe Bağlı)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      placeholder="Örn: 28m"
-                      placeholderTextColor="#94A3B8"
-                      value={modalDistance}
-                      onChangeText={setModalDistance}
-                      keyboardType="default"
-                    />
-                  </View>
-                )}
-              </ScrollView>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setFacadeModalOpen(false)}
-                >
-                  <Text style={styles.modalCancelBtnText}>İptal</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalConfirmBtn}
-                  onPress={saveFacadeConfig}
-                >
-                  <Text style={styles.modalConfirmBtnText}>Kaydet</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -788,19 +817,6 @@ const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
     position: 'relative',
-  },
-  splitRow: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-
-  // MOBILE BLUEPRINT CONTAINER (Behind bottom sheet)
-  mobileBlueprintContainer: {
-    flex: 1,
-    backgroundColor: COLORS.bgDark,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 8,
   },
   blueprintTitleBoxCompact: {
     width: '100%',
@@ -821,59 +837,15 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     color: COLORS.textMuted,
   },
-
   mobileScrollContainer: {
     paddingBottom: 40,
   },
-  mobileBlueprintContainerInline: {
-    backgroundColor: COLORS.bgDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    width: '100%',
-    position: 'relative',
-  },
-
-  mobileFormContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    width: '100%',
-  },
-  nextBtnCompactInline: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 20,
-  },
-
-  // LARGE SCREEN / TABLET VIEW PANELS
-  leftPanelLarge: {
-    flex: 0.85,
-    height: '100%',
-    backgroundColor: COLORS.bgDark,
-  },
-  rightPanelLarge: {
-    flex: 1.15,
-    height: '100%',
-    backgroundColor: COLORS.bgMedium,
-    borderLeftWidth: 1,
-    borderColor: COLORS.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-
-  // INTERACTIVE 2D KROKI DIAGRAM
   krokiContainer: {
     width: 360,
     height: 360,
-    backgroundColor: '#F8FAFC', // Very light blueprint background
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0', // slate-200
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     position: 'relative',
     alignSelf: 'center',
@@ -886,8 +858,6 @@ const styles = StyleSheet.create({
   gridLine: {
     position: 'absolute',
   },
-
-  // POSITIONED FACADE SLOTS
   facadeSlot: {
     position: 'absolute',
     justifyContent: 'center',
@@ -899,8 +869,6 @@ const styles = StyleSheet.create({
   posBottom: { left: 95, top: 285, width: 170, height: 45 },
   posLeft: { left: 30, top: 95, width: 45, height: 170 },
   posRight: { left: 285, top: 95, width: 45, height: 170 },
-
-  // FACADE STYLINGS
   facadeAdd: {
     borderStyle: 'dashed',
     borderColor: COLORS.primary,
@@ -1008,8 +976,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBorder,
     borderWidth: 0.5,
   },
-
-  // DIMENSIONS MEASURING BARS
   dimHeightContainer: {
     position: 'absolute',
     left: 5,
@@ -1033,8 +999,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
   },
-
-  // CENTER BOX: MEVCUT PROJE ALANI
   centerBuildingBox: {
     position: 'absolute',
     left: 95,
@@ -1071,7 +1035,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   badge: {
-    backgroundColor: '#FEF3C7', // Amber-50
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -1094,449 +1058,258 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 4,
   },
-  // Crosshair styles for drafting aesthetic
   crosshair: {
     position: 'absolute',
     width: 10,
     height: 10,
-    borderColor: '#94A3B8' // slate-400
+    borderColor: '#94A3B8'
   },
   chTopLeft: { top: 10, left: 10, borderTopWidth: 1.5, borderLeftWidth: 1.5 },
   chTopRight: { top: 10, right: 10, borderTopWidth: 1.5, borderRightWidth: 1.5 },
   chBottomLeft: { bottom: 10, left: 10, borderBottomWidth: 1.5, borderLeftWidth: 1.5 },
   chBottomRight: { bottom: 10, right: 10, borderBottomWidth: 1.5, borderRightWidth: 1.5 },
-
-  // SCROLLABLE FORM PANEL STYLES
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     alignSelf: 'flex-start',
   },
   backBtnText: {
     fontFamily: FONTS.medium,
-    fontSize: 13,
+    fontSize: 15,
     color: COLORS.textLight,
-    marginLeft: 6,
+    marginLeft: 8,
   },
-  mainTitle: {
+  stepTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontFamily: FONTS.regular,
     fontSize: 12,
-    color: COLORS.textMuted,
-    marginBottom: 16,
-  },
-
-  // COMPACT CONFIG FIELDS & HEADERS
-  formFieldsInner: {
-    flexDirection: 'column',
-  },
-  compactGroupHeader: {
-    fontFamily: FONTS.bold,
-    fontSize: 10.5,
     color: COLORS.primary,
-    letterSpacing: 0.8,
-    marginTop: 8,
-    marginBottom: 6,
-    borderBottomWidth: 1,
-    borderColor: COLORS.cardBorder,
-    paddingBottom: 3,
-  },
-  compactRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  compactCol: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  labelWithHelp: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  compactInputLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: 10.5,
-    color: COLORS.textLight,
-  },
-
-  // COMPACT STEPPER
-  compactStepperBox: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    height: 34,
-  },
-  compactStepperBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  compactStepperVal: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: COLORS.textLight,
+    letterSpacing: 1.5,
     textAlign: 'center',
-    minWidth: 32,
-  },
-
-  // COMPACT SLIDING SEGMENTED CONTROLS
-  yesNoSegmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    padding: 2,
-    position: 'relative',
-    height: 34,
-    alignItems: 'center',
-  },
-  segmentIndicator: {
-    position: 'absolute',
-    top: 2,
-    bottom: 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 6,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  yesNoSegmentBtn: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-  },
-  yesNoSegmentText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10.5,
-    color: COLORS.textMuted,
-  },
-  yesNoSegmentTextActive: {
-    color: COLORS.primary,
-  },
-
-  mutSegmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    padding: 2,
-    position: 'relative',
-    height: 42,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  mutSegmentBtn: {
-    flex: 1,
-    height: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-  },
-  mutSegmentText: {
-    fontFamily: FONTS.bold,
-    fontSize: 11.5,
-    color: COLORS.textMuted,
-  },
-  mutSegmentTextActive: {
-    color: COLORS.primary,
-  },
-  mutSegmentDesc: {
-    fontFamily: FONTS.regular,
-    fontSize: 8,
-    color: COLORS.textMuted,
-    marginTop: -1,
-  },
-
-  // COMPACT GRID SYSTEM (2x2)
-  inputsGridCompact: {
-    flexDirection: 'row',
-    gap: 8,
     marginBottom: 6,
+    textTransform: 'uppercase',
   },
-  textInputStyleCompact: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    height: 32,
-    fontSize: 12.5,
-    color: COLORS.textLight,
-    fontFamily: FONTS.regular,
-  },
-
-  // TOTAL AREA ROW
-  areaRowBoxCompact: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  previewGlassCard: {
+    padding: 16,
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    borderRadius: 8,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    marginTop: 6,
-    marginBottom: 8,
   },
-  areaRowLabelCompact: {
+  previewCardTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 9.5,
-    color: COLORS.success,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 12,
   },
-  areaRowValCompact: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: COLORS.success,
+  optionsGrid: {
+    width: '100%',
+    gap: 8,
   },
-
-  // NEXT BTN
-  nextBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  nextBtnCompact: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  nextBtnText: {
-    color: COLORS.secondary,
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    marginRight: 6,
-  },
-
-  // GLOW BACKDROP EFFECT
-  glow: {
-    position: 'absolute',
-    top: 50,
-    left: -50,
-    width: windowWidth * 0.7,
-    height: windowWidth * 0.7,
-    borderRadius: windowWidth * 0.35,
-    backgroundColor: COLORS.secondary,
-    opacity: 0.03,
-  },
-
-  // FACADE EDITOR MODAL
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
+  optionButton: {
+    width: '100%',
     backgroundColor: COLORS.bgMedium,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 340,
-    padding: 16,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'flex-start',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: COLORS.cardBorder,
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  modalTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  modalOptionsScroll: {
-    maxHeight: 280,
-  },
-  modalItem: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 6,
-  },
-  modalItemActive: {
+  optionButtonActive: {
+    backgroundColor: 'rgba(253, 192, 16, 0.05)',
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(6, 182, 212, 0.06)',
   },
-  modalItemText: {
+  optionButtonText: {
     fontFamily: FONTS.bold,
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textLight,
   },
-  modalItemTextActive: {
-    color: COLORS.primary,
+  optionButtonTextActive: {
+    color: COLORS.secondary,
   },
-  modalItemDesc: {
+  optionButtonDesc: {
     fontFamily: FONTS.regular,
-    fontSize: 9.5,
-    color: COLORS.textMuted,
-    marginTop: 1,
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
   },
-  modalInputWrapper: {
-    marginTop: 10,
-    padding: 8,
+  counterWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterSubLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    color: COLORS.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 10,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  counterControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  counterBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  counterValue: {
+    fontFamily: FONTS.bold,
+    fontSize: 28,
+    color: '#1E293B',
+    minWidth: 80,
+    textAlign: 'center',
+  },
+  inlineInputWrapper: {
+    marginTop: 12,
+    padding: 12,
     backgroundColor: '#F8FAFC',
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    width: '100%',
   },
-  modalInputLabel: {
+  inlineInputLabel: {
     fontFamily: FONTS.bold,
     fontSize: 10,
     color: COLORS.textMuted,
     marginBottom: 4,
   },
-  modalTextInput: {
+  inlineTextInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 12,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
     color: COLORS.textLight,
     fontFamily: FONTS.regular,
+    width: '100%',
   },
-  modalActions: {
+  summaryScroll: {
+    width: '100%',
+    maxHeight: 180,
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+  },
+  summaryItem: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1F5F9',
+  },
+  summaryLabelText: {
+    fontFamily: FONTS.medium,
+    fontSize: 12,
+    color: '#64748B',
+  },
+  summaryValueText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: '#1E293B',
+  },
+  finalQuestionBox: {
+    padding: 12,
+    backgroundColor: 'rgba(253, 192, 16, 0.05)',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '100%',
+  },
+  finalQuestionText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: COLORS.secondary,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  nextBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 12,
-    borderTopWidth: 1,
-    borderColor: COLORS.cardBorder,
-    paddingTop: 12,
+    width: '100%',
   },
-  modalCancelBtn: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  modalCancelBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  modalConfirmBtn: {
-    flex: 1,
-    backgroundColor: '#D97706',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  modalConfirmBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: COLORS.white,
-  },
-  inlineEditBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-  },
-  inlineEditBtnText: {
-    color: COLORS.white,
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-  },
-  inlineCloseBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  inlineCloseBtnText: {
-    color: COLORS.textLight,
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-  },
-  floatingEditBtn: {
-    position: 'absolute',
-    bottom: 35,
-    alignSelf: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-    zIndex: 25,
-  },
-  floatingEditBtnText: {
+  nextBtnText: {
     color: COLORS.secondary,
     fontFamily: FONTS.bold,
-    fontSize: 12.5,
+    fontSize: 16,
+    marginRight: 8,
   },
-  mobileStepperContainer: {
+  questionHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    width: '100%',
-    paddingHorizontal: 16,
-    marginTop: 4,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
     marginBottom: 8,
+    width: '100%',
   },
-  compactBackBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
+  questionTitleText: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+    color: COLORS.textLight,
+  },
+  questionStepText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: COLORS.primary,
+  },
+  questionProgressBarBg: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    marginBottom: 16,
+    width: '100%',
+  },
+  questionProgressBarActive: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+  },
+  questionSubtitleText: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: COLORS.textMuted,
+    lineHeight: 20,
+    marginBottom: 20,
+    width: '100%',
+  },
+  controlsSection: {
+    minHeight: 120,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  glow: {
+    position: 'absolute',
+    top: 200,
+    right: -100,
+    width: windowWidth * 0.7,
+    height: windowWidth * 0.7,
+    borderRadius: windowWidth * 0.35,
+    backgroundColor: COLORS.primary,
+    opacity: 0.03,
+    blurRadius: 100,
   },
   headerSubtitleBox: {
     paddingHorizontal: 16,
@@ -1554,58 +1327,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingVertical: 10,
-  },
-  bottomButtonsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderColor: COLORS.cardBorder,
-    backgroundColor: COLORS.bgMedium,
-    gap: 10,
-    alignItems: 'center',
-  },
-  infoOpenBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    height: 46,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#D97706',
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoOpenBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: '#D97706',
-  },
-  confirmSubmitBtn: {
-    flex: 2.2,
-    flexDirection: 'row',
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: '#D97706',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  confirmSubmitBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: COLORS.white,
-    marginRight: 6,
-  },
-  infoModalContent: {
-    maxWidth: 360,
-    maxHeight: '85%',
-  },
-  modalFormScroll: {
-    marginVertical: 10,
   },
 });

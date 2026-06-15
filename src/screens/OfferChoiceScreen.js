@@ -89,7 +89,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         if (block && block.floors) {
           block.floors.forEach(floor => {
             const area = block.averageSqm || averageArea;
-            const isBodrum = floor.type === 'bodrum' || floor.type === 'bodrum_end';
+            const isBodrum = floor.type === 'bodrum' || floor.type === 'bodrum_end' || floor.type === 'basement';
             if (isBodrum) {
               bodrumCount++;
               bodrumSqmTotal += area;

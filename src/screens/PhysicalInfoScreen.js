@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Modal, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Modal,
   Platform,
   TextInput,
   useWindowDimensions,
@@ -17,13 +17,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Minus, 
-  Copy, 
-  Check, 
-  Info, 
+import {
+  ArrowLeft,
+  Plus,
+  Minus,
+  Copy,
+  Check,
+  Info,
   X,
   ChevronDown,
   Trash2,
@@ -88,13 +88,88 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const [roofType, setRoofType] = useState('normal'); // 'normal', 'mansart', 'none'
   const [hasAttic, setAttic] = useState(false);
   const [normalFloorCount, setNormalFloorCount] = useState(3);
-  const [flatsPerNormalFloor, setFlatsPerNormalFloor] = useState(2);
+  const [flatsPerFloor, setFlatsPerFloor] = useState({ 1: 2, 2: 2, 3: 2 });
   const [hasGroundShop, setHasGroundShop] = useState(true);
   const [groundUnitCount, setGroundUnitCount] = useState(2);
   const [basementCount, setBasementCount] = useState(0);
   const [basementUnitType, setBasementUnitType] = useState('depo'); // 'depo', 'siginak'
   const [basementUnitCount, setBasementUnitCount] = useState(1);
   const [averageSqm, setAverageSqm] = useState(120);
+
+  // Restore state from previously saved data on mount
+  useEffect(() => {
+    const activeKey = blockKeys[0]?.key || 'single';
+    const existingStructure = data.buildingStructures?.[activeKey];
+    if (existingStructure) {
+      if (existingStructure.roofType) setRoofType(existingStructure.roofType);
+      if (existingStructure.averageSqm) setAverageSqm(existingStructure.averageSqm);
+
+      const floors = existingStructure.floors || [];
+
+      // Normal floors
+      const normalFloors = floors.filter(f => f.type === 'normal');
+      if (normalFloors.length > 0) {
+        setNormalFloorCount(normalFloors.length);
+
+        const restoredFlatsPerFloor = {};
+        normalFloors.forEach(f => {
+          const match = f.key.match(/normal_(\d+)/);
+          if (match) {
+            const idx = parseInt(match[1], 10);
+            restoredFlatsPerFloor[idx] = f.units?.filter(u => getUnitDetails(u).type === 'daire').length || 2;
+          }
+        });
+        setFlatsPerFloor(restoredFlatsPerFloor);
+
+        const topNormalFloor = normalFloors.reduce((maxF, currentF) => {
+          const currentIdx = parseInt(currentF.key.match(/normal_(\d+)/)?.[1] || '0', 10);
+          const maxIdx = parseInt(maxF.key.match(/normal_(\d+)/)?.[1] || '0', 10);
+          return currentIdx > maxIdx ? currentF : maxF;
+        }, normalFloors[0]);
+        if (topNormalFloor) {
+          setAttic(!!topNormalFloor.hasAttic);
+        }
+      }
+
+      // Ground floor
+      const groundFloor = floors.find(f => f.type === 'ground');
+      if (groundFloor) {
+        const firstUnit = groundFloor.units?.[0];
+        const isShop = firstUnit ? getUnitDetails(firstUnit).type === 'dukkan' : true;
+        setHasGroundShop(isShop);
+        setGroundUnitCount(groundFloor.units?.length || 2);
+      }
+
+      // Basement floors
+      const basementFloors = floors.filter(f => f.type === 'basement');
+      if (basementFloors.length > 0) {
+        setBasementCount(basementFloors.length);
+        const firstBasement = basementFloors[0];
+        const firstUnit = firstBasement.units?.[0];
+        if (firstUnit) {
+          setBasementUnitType(getUnitDetails(firstUnit).type);
+        }
+        setBasementUnitCount(firstBasement.units?.length || 1);
+      } else {
+        setBasementCount(0);
+      }
+    }
+  }, []);
+
+  // Sync flatsPerFloor keys dynamically with normalFloorCount
+  useEffect(() => {
+    setFlatsPerFloor(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      for (let i = 1; i <= normalFloorCount; i++) {
+        if (updated[i] === undefined) {
+          updated[i] = 2; // Default 2 flats per floor
+          changed = true;
+        }
+      }
+      return changed ? updated : prev;
+    });
+  }, [normalFloorCount]);
 
   // Compute dynamic floors representation for building preview
   const computedBlockData = useMemo(() => {
@@ -104,7 +179,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     for (let i = normalFloorCount; i >= 1; i--) {
       const isTop = i === normalFloorCount;
       const units = [];
-      for (let u = 0; u < flatsPerNormalFloor; u++) {
+      const floorFlatsCount = flatsPerFloor[i] || 2;
+      for (let u = 0; u < floorFlatsCount; u++) {
         units.push({
           id: `daire_normal_${i}_${u}`,
           type: 'daire',
@@ -164,7 +240,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     roofType,
     hasAttic,
     normalFloorCount,
-    flatsPerNormalFloor,
+    flatsPerFloor,
     hasGroundShop,
     groundUnitCount,
     basementCount,
@@ -174,69 +250,85 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   ]);
 
   // Step definition array
-  const STEPS = [
-    {
-      title: 'Kat Sayısı',
-      question: 'Binanızda zemin katın üstünde kaç kat bulunmaktadır?',
-      key: 'normalFloorCount'
-    },
-    {
-      title: 'Daire Sayısı',
-      question: 'Normal katların her birinde kaç daire bulunuyor?',
-      key: 'flatsPerNormalFloor'
-    },
-    {
-      title: 'Zemin Kullanımı',
-      question: 'Binanızın zemin katında dükkan/mağaza var mı?',
-      key: 'hasGroundShop'
-    },
-    {
-      title: 'Zemin Birim Sayısı',
-      question: 'Zemin katta toplam kaç adet dükkan/daire bulunmaktadır?',
-      key: 'groundUnitCount'
-    },
-    {
-      title: 'Bodrum Kat',
-      question: 'Binanızda bodrum kat bulunuyor mu? Varsa kaç adet?',
-      key: 'basementCount'
-    },
-    {
-      title: 'Bodrum Kullanımı',
-      question: 'Bodrum kat(lar)da yer alan birimlerin tipi nedir ve kaç adettir?',
-      key: 'basementUsage'
-    },
-    {
-      title: 'Daire Büyüklüğü',
-      question: 'Binadaki dairelerin ortalama brüt alanı kaç m²\'dir?',
-      key: 'averageSqm'
-    },
-    {
-      title: 'Çatı Tipi',
-      question: 'Binanızın üst kısmındaki çatı yapısı nasıldır?',
-      key: 'roofType'
-    },
-    {
-      title: 'Çatı Piyesi',
-      question: 'En üst katın çatı boşluğunda dubleks daire (çatı piyesi) var mı?',
-      key: 'hasAttic'
-    },
-    {
-      title: 'Onay ve Kontrol',
-      question: 'Oluşturduğunuz bina modeli aşağıdaki gibidir. Onaylıyor musunuz?',
-      key: 'confirmation'
+  const STEPS = useMemo(() => {
+    const steps = [
+      {
+        title: 'Kat Sayısı',
+        question: 'Binanızda zemin katın üstünde kaç kat bulunmaktadır?',
+        key: 'normalFloorCount'
+      }
+    ];
+
+    // Dynamic steps for each normal floor from 1st to Nth floor
+    for (let i = 1; i <= normalFloorCount; i++) {
+      steps.push({
+        title: `${i}. Kat Daire Sayısı`,
+        question: `${i}. normal katta toplam kaç daire bulunuyor?`,
+        key: `floorFlatsCount_${i}`,
+        floorIndex: i
+      });
     }
-  ];
+
+    steps.push(
+      {
+        title: 'Zemin Kullanımı',
+        question: 'Binanızın zemin katında dükkan/mağaza var mı?',
+        key: 'hasGroundShop'
+      },
+      {
+        title: 'Zemin Birim Sayısı',
+        question: 'Zemin katta toplam kaç adet dükkan/daire bulunmaktadır?',
+        key: 'groundUnitCount'
+      },
+      {
+        title: 'Bodrum Kat',
+        question: 'Binanızda bodrum kat bulunuyor mu? Varsa kaç adet?',
+        key: 'basementCount'
+      },
+      {
+        title: 'Bodrum Kullanımı',
+        question: 'Bodrum kat(lar)da yer alan birimlerin tipi nedir ve kaç adettir?',
+        key: 'basementUsage'
+      },
+      {
+        title: 'Daire Büyüklüğü',
+        question: 'Binadaki dairelerin ortalama brüt alanı kaç m²\'dir?',
+        key: 'averageSqm'
+      },
+      {
+        title: 'Çatı Tipi',
+        question: 'Binanızın üst kısmındaki çatı yapısı nasıldır?',
+        key: 'roofType'
+      },
+      {
+        title: 'Çatı Piyesi',
+        question: 'En üst katın çatı boşluğunda dubleks daire (çatı piyesi) var mı?',
+        key: 'hasAttic'
+      },
+      {
+        title: 'Onay ve Kontrol',
+        question: 'Oluşturduğunuz bina modeli aşağıdaki gibidir. Onaylıyor musunuz?',
+        key: 'confirmation'
+      }
+    );
+
+    return steps;
+  }, [normalFloorCount, hasGroundShop]);
 
   // Navigation handlers for sub-steps
   const handleNextSubStep = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     let next = currentQuestionStep + 1;
-    if (next === 5 && basementCount === 0) {
-      next = 6; // Skip basementUsage if no basement
+
+    // Skip basementUsage if basementCount is 0
+    if (next < STEPS.length && STEPS[next].key === 'basementUsage' && basementCount === 0) {
+      next = next + 1;
     }
-    if (next === 8 && roofType === 'none') {
-      next = 9; // Skip hasAttic if no roof
+    // Skip hasAttic if roofType is 'none'
+    if (next < STEPS.length && STEPS[next].key === 'hasAttic' && roofType === 'none') {
+      next = next + 1;
     }
+
     if (next < STEPS.length) {
       setCurrentQuestionStep(next);
     }
@@ -245,12 +337,16 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const handleBackSubStep = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     let prev = currentQuestionStep - 1;
-    if (prev === 8 && roofType === 'none') {
-      prev = 7; // Skip hasAttic backwards
+
+    // Skip hasAttic backwards if roofType is 'none'
+    if (prev >= 0 && STEPS[prev].key === 'hasAttic' && roofType === 'none') {
+      prev = prev - 1;
     }
-    if (prev === 5 && basementCount === 0) {
-      prev = 4; // Skip basementUsage backwards
+    // Skip basementUsage backwards if basementCount is 0
+    if (prev >= 0 && STEPS[prev].key === 'basementUsage' && basementCount === 0) {
+      prev = prev - 1;
     }
+
     if (prev >= 0) {
       setCurrentQuestionStep(prev);
     } else {
@@ -286,7 +382,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       if (block.roofType === 'mansart') {
         hasAnyMansart = true;
       }
-      
+
       finalFloors[key] = normalFloorCountVal + roofCount;
 
       let flatCount = 0;
@@ -328,10 +424,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   // Layout calculations for preview container (fits in 170px available height)
   const numFloors = computedBlockData.floors.length;
   const layoutMath = useMemo(() => {
-    const availableBuildingHeight = 175; 
+    const availableBuildingHeight = 175;
     const computedHeight = availableBuildingHeight / (numFloors + 0.75);
     const baseFloorHeight = Math.max(20, Math.min(40, computedHeight));
-    
+
     return {
       baseFloorHeight,
       rowPaddingVertical: Math.max(1, Math.min(3, baseFloorHeight * 0.08)),
@@ -356,10 +452,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const renderFloorLabel = (floor) => {
     const isBasement = floor.type === 'basement';
     const isGround = floor.type === 'ground';
-    
+
     let mainText = '';
     let subText = '';
-    
+
     if (floor.type === 'ground') {
       mainText = 'Z';
       subText = 'Zemin';
@@ -377,7 +473,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     let subColor = '#64748B';
     let badgeBg = 'rgba(59, 130, 246, 0.06)';
     let borderColor = 'rgba(59, 130, 246, 0.12)';
-    
+
     if (isGround) {
       mainColor = '#D97706';
       subColor = '#B45309';
@@ -393,7 +489,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     return (
       <View style={[
         styles.floorLabelBadge,
-        { 
+        {
           backgroundColor: badgeBg,
           borderColor: borderColor,
           paddingVertical: Math.max(1, baseFloorHeight * 0.05)
@@ -412,7 +508,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const renderUnitCard = (unit, unitNum, floorKey, unitIndex) => {
     const details = getUnitDetails(unit);
     const { type: unitType, id: unitId } = details;
-    
+
     if (unitType === 'siginak') {
       return (
         <View key={unitId || `${floorKey}_${unitIndex}`} style={[styles.unitCard, { paddingVertical: cardPaddingVertical }]}>
@@ -437,8 +533,46 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
   // Rendering custom input controls based on active sub-step
   const renderQuestionControls = () => {
-    switch (currentQuestionStep) {
-      case 0: // Kat Sayısı
+    const activeStep = STEPS[currentQuestionStep];
+    if (!activeStep) return null;
+
+    if (activeStep.floorIndex !== undefined) {
+      const floorIdx = activeStep.floorIndex;
+      const val = flatsPerFloor[floorIdx] || 2;
+      return (
+        <View style={styles.counterWrapper}>
+          <Text style={styles.counterSubLabel}>DAİRE SAYISI</Text>
+          <View style={styles.counterControls}>
+            <TouchableOpacity
+              style={styles.counterBtn}
+              onPress={() => {
+                setFlatsPerFloor(prev => ({
+                  ...prev,
+                  [floorIdx]: Math.max(1, (prev[floorIdx] || 2) - 1)
+                }));
+              }}
+            >
+              <Minus size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.counterValue}>{val}</Text>
+            <TouchableOpacity
+              style={styles.counterBtn}
+              onPress={() => {
+                setFlatsPerFloor(prev => ({
+                  ...prev,
+                  [floorIdx]: Math.min(8, (prev[floorIdx] || 2) + 1)
+                }));
+              }}
+            >
+              <Plus size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    switch (activeStep.key) {
+      case 'normalFloorCount':
         return (
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>KAT SAYISI</Text>
@@ -460,29 +594,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 1: // Katta Daire Sayısı
-        return (
-          <View style={styles.counterWrapper}>
-            <Text style={styles.counterSubLabel}>DAİRE SAYISI</Text>
-            <View style={styles.counterControls}>
-              <TouchableOpacity
-                style={styles.counterBtn}
-                onPress={() => setFlatsPerNormalFloor(prev => Math.max(1, prev - 1))}
-              >
-                <Minus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.counterValue}>{flatsPerNormalFloor}</Text>
-              <TouchableOpacity
-                style={styles.counterBtn}
-                onPress={() => setFlatsPerNormalFloor(prev => Math.min(8, prev + 1))}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-
-      case 2: // Zemin Kat Kullanımı
+      case 'hasGroundShop':
         return (
           <View style={styles.optionsRow}>
             {[
@@ -510,7 +622,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 3: // Zemin Kat Birim Sayısı
+      case 'groundUnitCount':
         return (
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>{hasGroundShop ? 'DÜKKAN SAYISI' : 'DAİRE SAYISI'}</Text>
@@ -532,7 +644,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 4: // Bodrum Kat Sayısı
+      case 'basementCount':
         return (
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>BODRUM KAT SAYISI</Text>
@@ -554,7 +666,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 5: // Bodrum Kullanımı (Only if basementCount > 0)
+      case 'basementUsage':
         return (
           <View style={styles.basementStepContainer}>
             <Text style={styles.subQuestionLabel}>Bodrum Birim Tipi:</Text>
@@ -601,7 +713,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 6: // Ortalama m2
+      case 'averageSqm':
         return (
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>ORTALAMA DAİRE ALANI</Text>
@@ -623,7 +735,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 7: // Çatı Tipi
+      case 'roofType':
         return (
           <View style={styles.optionsGrid}>
             {[
@@ -652,7 +764,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 8: // Çatı Piyesi
+      case 'hasAttic':
         return (
           <View style={styles.optionsRow}>
             {[
@@ -680,7 +792,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 9: // Onay / Summary
+      case 'confirmation':
         return (
           <ScrollView style={styles.summaryScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.summaryCard}>
@@ -693,7 +805,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Normal Kat Sayısı:</Text>
-                <Text style={styles.summaryValueText}>{normalFloorCount} Kat (Kat başı {flatsPerNormalFloor} Daire)</Text>
+                <Text style={styles.summaryValueText}>{normalFloorCount} Kat</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Zemin Kat Yapısı:</Text>
@@ -723,7 +835,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={globalStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -749,24 +861,24 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         </View>
 
         {/* Main Content inside ScrollView */}
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={[
             globalStyles.scrollContainer,
             { paddingTop: 10, paddingBottom: 40 }
-          ]} 
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           <View style={{ flex: 1, gap: 16 }}>
-            
+
             {/* 1. BİNA ÖNİZLEME KARTI */}
             <View style={[globalStyles.glassCard, styles.previewGlassCard]}>
               <Text style={styles.previewCardTitle}>BİNA MODELİ ÖNİZLEME</Text>
-              
+
               <View style={styles.buildingWrapper}>
                 {/* Çatı */}
                 {roofType === 'mansart' ? (
                   <View style={[styles.roofWrapper, { height: roofHeight }]}>
-                    <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280/220)}`}>
+                    <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="mansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
                           <Stop offset="0" stopColor="#334155" stopOpacity="1" />
@@ -777,11 +889,11 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                           <Stop offset="1" stopColor="#B45309" stopOpacity="1" />
                         </SvgLinearGradient>
                       </Defs>
-                      <Polygon 
-                        points={`25,0 255,0 280,${roofHeight * (280/220)} 0,${roofHeight * (280/220)}`} 
-                        fill="url(#mansartRoofGrad)" 
+                      <Polygon
+                        points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
+                        fill="url(#mansartRoofGrad)"
                       />
-                      <Rect x="0" y={roofHeight * (280/220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
+                      <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
                     </Svg>
                     <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
                       <Text style={[styles.roofTextCapsuleText, { fontSize: Math.max(6.5, Math.min(10, roofHeight * 0.22)) }]}>
@@ -791,7 +903,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                   </View>
                 ) : roofType === 'normal' ? (
                   <View style={[styles.roofWrapper, { height: roofHeight }]}>
-                    <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280/220)}`}>
+                    <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="normalRoofGrad" x1="0" y1="0" x2="0" y2="1">
                           <Stop offset="0" stopColor="#3E4F66" stopOpacity="1" />
@@ -802,19 +914,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                           <Stop offset="1" stopColor="#B45309" stopOpacity="1" />
                         </SvgLinearGradient>
                       </Defs>
-                      <Polygon 
-                        points={`0,${roofHeight * (280/220)} 140,0 280,${roofHeight * (280/220)}`} 
-                        fill="url(#normalRoofGrad)" 
+                      <Polygon
+                        points={`0,${roofHeight * (280 / 220)} 140,0 280,${roofHeight * (280 / 220)}`}
+                        fill="url(#normalRoofGrad)"
                       />
                       {hasAttic && (
                         <>
-                          <Polygon points={`85,${roofHeight * (280/220) * 0.75} 100,${roofHeight * (280/220) * 0.5} 115,${roofHeight * (280/220) * 0.75}`} fill="#475569" opacity="0.6" />
-                          <Polygon points={`89,${roofHeight * (280/220) * 0.73} 100,${roofHeight * (280/220) * 0.54} 111,${roofHeight * (280/220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
-                          <Polygon points={`165,${roofHeight * (280/220) * 0.75} 180,${roofHeight * (280/220) * 0.5} 195,${roofHeight * (280/220) * 0.75}`} fill="#475569" opacity="0.6" />
-                          <Polygon points={`169,${roofHeight * (280/220) * 0.73} 180,${roofHeight * (280/220) * 0.54} 191,${roofHeight * (280/220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
+                          <Polygon points={`85,${roofHeight * (280 / 220) * 0.75} 100,${roofHeight * (280 / 220) * 0.5} 115,${roofHeight * (280 / 220) * 0.75}`} fill="#475569" opacity="0.6" />
+                          <Polygon points={`89,${roofHeight * (280 / 220) * 0.73} 100,${roofHeight * (280 / 220) * 0.54} 111,${roofHeight * (280 / 220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
+                          <Polygon points={`165,${roofHeight * (280 / 220) * 0.75} 180,${roofHeight * (280 / 220) * 0.5} 195,${roofHeight * (280 / 220) * 0.75}`} fill="#475569" opacity="0.6" />
+                          <Polygon points={`169,${roofHeight * (280 / 220) * 0.73} 180,${roofHeight * (280 / 220) * 0.54} 191,${roofHeight * (280 / 220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
                         </>
                       )}
-                      <Rect x="0" y={roofHeight * (280/220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
+                      <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
                     </Svg>
                     <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
                       <Text style={[styles.roofTextCapsuleText, { fontSize: Math.max(6.5, Math.min(10, roofHeight * 0.22)) }]}>
@@ -845,8 +957,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                           isBasement && styles.floorRowBasement,
                           isGround && styles.floorRowGround,
                           floor.type === 'normal' && styles.floorRowNormal,
-                          { 
-                            height: baseFloorHeight, 
+                          {
+                            height: baseFloorHeight,
                             minHeight: baseFloorHeight,
                             paddingVertical: rowPaddingVertical,
                             marginVertical: Math.max(1, Math.min(3, baseFloorHeight * 0.05)),
@@ -875,12 +987,12 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
             {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
             <View style={globalStyles.glassCard}>
               <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
-              
+
               <View style={styles.questionHeaderRow}>
-                <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep].title}</Text>
+                <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep]?.title}</Text>
                 <Text style={styles.questionStepText}>Soru {currentQuestionStep + 1} / {STEPS.length}</Text>
               </View>
-              
+
               <View style={styles.questionProgressBarBg}>
                 <View style={[
                   styles.questionProgressBarActive,
@@ -888,7 +1000,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 ]} />
               </View>
 
-              <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep].question}</Text>
+              <Text style={styles.questionSubtitleText}>{STEPS[currentQuestionStep]?.question}</Text>
 
               {/* Soru Seçenekleri / Girişleri */}
               <View style={styles.controlsSection}>
@@ -896,7 +1008,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               </View>
 
               {/* Onay Sorusu Banner'ı */}
-              {currentQuestionStep === 9 && (
+              {currentQuestionStep === STEPS.length - 1 && (
                 <View style={styles.finalQuestionBox}>
                   <Text style={styles.finalQuestionText}>
                     Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
@@ -905,13 +1017,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               )}
 
               {/* Devam Et / İleri Butonu */}
-              <TouchableOpacity 
-                style={styles.nextBtn} 
-                onPress={currentQuestionStep === 9 ? handleConfirmSave : handleNextSubStep}
+              <TouchableOpacity
+                style={styles.nextBtn}
+                onPress={currentQuestionStep === STEPS.length - 1 ? handleConfirmSave : handleNextSubStep}
                 activeOpacity={0.8}
               >
                 <Text style={styles.nextBtnText}>
-                  {currentQuestionStep === 9 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
+                  {currentQuestionStep === STEPS.length - 1 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
                 </Text>
                 <ArrowRight size={20} color={COLORS.secondary} />
               </TouchableOpacity>
