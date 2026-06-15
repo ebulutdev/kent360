@@ -78,16 +78,37 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
 
     setLoading(true);
 
-    const submissionPayload = {
+    // Helper to recursively clean payload of undefined values which Firestore rejects
+    const cleanPayload = (val) => {
+      if (val === undefined) {
+        return null;
+      }
+      if (val === null) {
+        return null;
+      }
+      if (Array.isArray(val)) {
+        return val.map(item => cleanPayload(item));
+      }
+      if (typeof val === 'object') {
+        const cleaned = {};
+        Object.keys(val).forEach(key => {
+          cleaned[key] = cleanPayload(val[key]);
+        });
+        return cleaned;
+      }
+      return val;
+    };
+
+    const submissionPayload = cleanPayload({
       ...data,
       name: name.trim(),
       surname: surname.trim(),
       phone: phone.replace(/\D/g, ''),
       createdAt: new Date().toISOString()
-    };
+    });
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         console.log("🔥 Mock Firebase Kaydı Yapıldı:", submissionPayload);
         const mockDocId = "mock_doc_id_" + Math.random().toString(36).substring(7);
         const newSubmission = { id: mockDocId, ...submissionPayload };
@@ -108,13 +129,13 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
       } else {
         // Anonim Giriş ve Firestore Kaydını zaman aşımı ile çalıştır
         const runFirebaseWrite = async () => {
-          // Firebase Auth: Anonim Oturum Aç
           let uid = null;
           try {
             const userCredential = await signInAnonymously(auth);
             uid = userCredential.user.uid;
           } catch (authError) {
-            if (authError.code === 'auth/admin-restricted-operation') {
+            console.error("Firebase Auth Error:", authError);
+            if (authError.code === 'auth/admin-restricted-operation' || authError.code === 'auth/operation-not-allowed') {
               Alert.alert(
                 'Sistem Yapılandırma Hatası',
                 'Firebase Yapılandırma Hatası:\nAnonim Giriş (Anonymous Authentication) yöntemi aktif edilmemiş.\n\nÇözüm: Firebase Konsolunuza girip \'Authentication\' > \'Sign-in method\' sekmesinden \'Anonymous\' sağlayıcısını etkinleştiriniz.'
@@ -185,6 +206,27 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
       }
     } catch (error) {
       console.error("❌ Firebase Kayıt Hatası:", error);
+      
+      let errorMsg = error.message || '';
+      let errorCode = error.code || '';
+      
+      if (errorCode === 'permission-denied' || errorMsg.includes('permission-denied') || errorMsg.includes('insufficient permissions')) {
+        Alert.alert(
+          'Firebase Yetki Hatası',
+          'Firestore veritabanına yazma yetkiniz yok.\n\nÇözüm: Firebase Konsolunuzda Cloud Firestore > Rules (Kurallar) sekmesinden okuma/yazma izinlerini herkese açık (veya test moduna) düzenleyiniz.'
+        );
+      } else if (errorCode === 'not-found' || errorMsg.includes('NOT_FOUND') || errorMsg.includes('database does not exist')) {
+        Alert.alert(
+          'Veritabanı Bulunamadı',
+          'Firebase projenizde Cloud Firestore veritabanı oluşturulmamış.\n\nÇözüm: Firebase Konsolunuzdan Cloud Firestore sekmesine girip \'Veritabanı Oluştur\' butonuna basınız.'
+        );
+      } else {
+        Alert.alert(
+          'Kayıt Hatası',
+          'Firebase\'e kaydedilirken bir hata oluştu, ancak başvurunuz yerel belleğe kaydedildi. Hata: ' + errorMsg
+        );
+      }
+
       console.warn("⚠️ Firebase hatası nedeniyle yerel belleğe kaydediliyor...");
       const mockDocId = "mock_doc_id_err_" + Math.random().toString(36).substring(7);
       const newSubmission = { id: mockDocId, ...submissionPayload, offline: true };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -62,6 +62,131 @@ export default function App() {
 
   const [showContractorPortal, setShowContractorPortal] = useState(false);
   const [docId, setDocId] = useState('');
+
+  useEffect(() => {
+    const seedInitialLocalSubmissions = async () => {
+      try {
+        const localStr = await AsyncStorage.getItem('@local_submissions');
+        const localSubmissions = localStr ? JSON.parse(localStr) : [];
+        const hasSample1 = localSubmissions.some(sub => sub && sub.id === 'sample_sub_1');
+        
+        if (!hasSample1) {
+          const sampleSubmissions = [
+            {
+              id: 'sample_sub_1',
+              buildingType: 'single',
+              scopeType: 'single_building',
+              unionType: '',
+              buildingCount: 1,
+              city: 'İstanbul',
+              district: 'Kadıköy',
+              deeds: { single: { ada: '1250', parsel: '4' } },
+              coordinates: { latitude: 40.9910, longitude: 29.0270 },
+              width: 24,
+              depth: 26,
+              floorsCount: 5,
+              isMansart: false,
+              name: 'Ahmet',
+              surname: 'Yılmaz',
+              phone: '5321112233',
+              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+              buildingStructures: {
+                single: {
+                  roofType: 'normal',
+                  averageSqm: 110,
+                  floors: [
+                    { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u1'}, {type:'daire', name:'Daire', id:'u2'}] },
+                    { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u3'}, {type:'daire', name:'Daire', id:'u4'}] },
+                    { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u5'}, {type:'daire', name:'Daire', id:'u6'}] },
+                    { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u7'}, {type:'daire', name:'Daire', id:'u8'}] },
+                    { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'u9'}, {type:'daire', name:'Daire', id:'u10'}] }
+                  ]
+                }
+              }
+            },
+            {
+              id: 'sample_sub_2',
+              buildingType: 'complex',
+              scopeType: 'site',
+              unionType: 'block_based',
+              buildingCount: 3,
+              totalBuildingCount: 4,
+              city: 'İstanbul',
+              district: 'Beşiktaş',
+              deeds: {
+                A: { ada: '4320', parsel: '12' },
+                B: { ada: '4320', parsel: '13' },
+                C: { ada: '4320', parsel: '14' }
+              },
+              coordinates: { latitude: 41.0430, longitude: 29.0060 },
+              width: 30,
+              depth: 32,
+              floorsCount: 6,
+              isMansart: true,
+              name: 'Mehmet',
+              surname: 'Can',
+              phone: '5332223344',
+              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+              buildingStructures: {
+                A: {
+                  roofType: 'mansart',
+                  averageSqm: 120,
+                  floors: [
+                    { key: 'normal_5', label: '5. Kat (Çatı)', type: 'normal', units: [{type:'daire', name:'Daire', id:'ua1'}] },
+                    { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'ua2'}, {type:'daire', name:'Daire', id:'ua3'}] },
+                    { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'ua4'}, {type:'daire', name:'Daire', id:'ua5'}] },
+                    { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'ua6'}, {type:'daire', name:'Daire', id:'ua7'}] },
+                    { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'ua8'}, {type:'daire', name:'Daire', id:'ua9'}] },
+                    { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'ua10'}] }
+                  ]
+                }
+              }
+            },
+            {
+              id: 'sample_sub_3',
+              buildingType: 'single',
+              scopeType: 'single_building',
+              unionType: '',
+              buildingCount: 1,
+              city: 'Ankara',
+              district: 'Çankaya',
+              deeds: { single: { ada: '7840', parsel: '18' } },
+              coordinates: { latitude: 39.9020, longitude: 32.8590 },
+              width: 20,
+              depth: 22,
+              floorsCount: 4,
+              isMansart: false,
+              name: 'Ayşe',
+              surname: 'Kaya',
+              phone: '5353334455',
+              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+              buildingStructures: {
+                single: {
+                  roofType: 'normal',
+                  averageSqm: 95,
+                  floors: [
+                    { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u3_1'}, {type:'daire', name:'Daire', id:'u3_2'}] },
+                    { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u2_1'}, {type:'daire', name:'Daire', id:'u2_2'}] },
+                    { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u1_1'}, {type:'daire', name:'Daire', id:'u1_2'}] },
+                    { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'ug_1'}, {type:'daire', name:'Daire', id:'ug_2'}] }
+                  ]
+                }
+              }
+            }
+          ];
+          
+          const filteredLocal = localSubmissions.filter(s => s && s.id && !s.id.startsWith('sample_sub_'));
+          const merged = [...sampleSubmissions, ...filteredLocal];
+          await AsyncStorage.setItem('@local_submissions', JSON.stringify(merged));
+          console.log("✅ Kent360: Örnek başvurular yerel hafızaya otomatik olarak yüklendi.");
+        }
+      } catch (e) {
+        console.error("Error seeding initial local submissions:", e);
+      }
+    };
+    
+    seedInitialLocalSubmissions();
+  }, []);
 
   if (!fontsLoaded) {
     return (
@@ -207,9 +332,9 @@ export default function App() {
   if (showContractorPortal) {
     return (
       <SafeAreaProvider initialWindowMetrics={initialWindowMetrics}>
-        <View style={[styles.appContainer, { backgroundColor: '#0B0F19' }]}>
+        <View style={[styles.appContainer, { backgroundColor: '#F8FAFC' }]}>
           <ContractorPortal onBack={() => setShowContractorPortal(false)} />
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
         </View>
       </SafeAreaProvider>
     );

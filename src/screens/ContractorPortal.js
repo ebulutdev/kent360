@@ -31,19 +31,20 @@ import * as ImagePicker from 'expo-image-picker';
 const { width } = Dimensions.get('window');
 
 const PORTAL_COLORS = {
-  bg: '#070A13',            // Derin Obsidiyen Siyahı/Mavisi
-  card: '#131924',          // Zengin Kömür Grisi / Kart Arka Planı
-  border: 'rgba(197, 168, 128, 0.08)', // İnce Şampanya Altını Çerçeveler
-  accent: '#C5A880',        // Mat Fırçalanmış Şampanya Altını
-  accentLight: '#E5D5C0',   // Açık Şampanya Altını
-  accentBg: 'rgba(197, 168, 128, 0.15)', // Şampanya Altını Düşük Opaklıklı Etiket Arka Planı
-  textTitle: '#FFFFFF',     // Beyaz Başlıklar
-  textBody: '#94A3B8',      // Slate 300 Gövde
+  bg: '#F8FAFC',            // Slate 50 Light Gray
+  card: '#FFFFFF',          // Pure White
+  border: '#E2E8F0',        // Slate 200 Light Border
+  accent: '#FDC010',        // Altın Sarısı (Logo Gold)
+  accentLight: '#1E293B',   // Dark Navy
+  accentBg: 'rgba(253, 192, 16, 0.12)', // Altın sarısı düşük opaklıklı arka plan
+  textTitle: '#0F172A',     // Slate 900 (Koyu başlıklar)
+  textBody: '#1E293B',      // Slate 800 (Readability body)
   textMuted: '#64748B',     // Slate 500 Muted
   verified: '#10B981',      // Onay Yeşili
   verifiedBg: 'rgba(16, 185, 129, 0.12)',
   danger: '#EF4444',
-  dangerBg: 'rgba(239, 68, 68, 0.15)'
+  dangerBg: 'rgba(239, 68, 68, 0.15)',
+  buttonText: '#1E293B'     // Koyu lacivert buton metni
 };
 
 const DARK_MAP_STYLE = [
@@ -92,6 +93,26 @@ const getDemoProjects = () => [
     likedByMe: true
   }
 ];
+
+const cleanPayload = (val) => {
+  if (val === undefined) {
+    return null;
+  }
+  if (val === null) {
+    return null;
+  }
+  if (Array.isArray(val)) {
+    return val.map(item => cleanPayload(item));
+  }
+  if (typeof val === 'object') {
+    const cleaned = {};
+    Object.keys(val).forEach(key => {
+      cleaned[key] = cleanPayload(val[key]);
+    });
+    return cleaned;
+  }
+  return val;
+};
 
 export default function ContractorPortal({ onBack }) {
   const insets = useSafeAreaInsets();
@@ -164,7 +185,7 @@ export default function ContractorPortal({ onBack }) {
             console.error("Error loading local submissions:", e);
           }
 
-          if (isMock) {
+          if (isMock || !auth || !db) {
             setRequests(localSubmissions);
             setLoadingRequests(false);
 
@@ -427,7 +448,7 @@ export default function ContractorPortal({ onBack }) {
     setLoading(true);
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         // Mock Giriş
         setTimeout(async () => {
           let localSubmissions = [];
@@ -713,16 +734,16 @@ export default function ContractorPortal({ onBack }) {
     }
 
     setSavingProfile(true);
-    const updatedProfile = {
+    const updatedProfile = cleanPayload({
       ...contractorInfo,
       companyName: editCompanyName.trim(),
       phone: editPhone.trim(),
       address: editAddress.trim(),
       website: editWebsite.trim()
-    };
+    });
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         setContractorInfo(updatedProfile);
         Alert.alert('Başarılı', 'Profil bilgileri kaydedildi (Yerel mod).');
         setShowEditForm(false);
@@ -814,7 +835,7 @@ export default function ContractorPortal({ onBack }) {
     }
 
     setSavingProject(true);
-    const newProject = {
+    const newProject = cleanPayload({
       title: newProjectTitle.trim(),
       description: newProjectDesc.trim(),
       location: newProjectLocation.trim(),
@@ -822,10 +843,10 @@ export default function ContractorPortal({ onBack }) {
       images: newProjectImages,
       likes: 0,
       likedByMe: false
-    };
+    });
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         newProject.id = 'proj_' + Math.random().toString(36).substring(7);
         const updatedList = [newProject, ...contractorProjects];
         setContractorProjects(updatedList);
@@ -901,7 +922,7 @@ export default function ContractorPortal({ onBack }) {
       return;
     }
 
-    const newBid = {
+    const newBid = cleanPayload({
       submissionId: selectedRequestForBid.id,
       contractorId: user.uid,
       companyName: contractorInfo?.companyName || 'Kent360 İnşaat A.Ş.',
@@ -910,10 +931,10 @@ export default function ContractorPortal({ onBack }) {
       costPerSqm: costNum,
       notes: bidNotes.trim(),
       createdAt: new Date().toISOString()
-    };
+    });
 
     try {
-      if (isMock) {
+      if (isMock || !auth || !db) {
         newBid.id = 'bid_' + Math.random().toString(36).substring(7);
         const filteredBids = myBids.filter(b => b.submissionId !== selectedRequestForBid.id);
         const updatedBids = [newBid, ...filteredBids];
@@ -996,7 +1017,21 @@ export default function ContractorPortal({ onBack }) {
       setBidNotes('');
     } catch (e) {
       console.error("Error sending bid:", e);
-      Alert.alert('Hata', 'Teklif iletilirken bir hata oluştu.');
+      let errorMsg = e.message || '';
+      let errorCode = e.code || '';
+      if (errorCode === 'permission-denied' || errorMsg.includes('permission-denied') || errorMsg.includes('insufficient permissions')) {
+        Alert.alert(
+          'Firebase Yetki Hatası',
+          'Firestore veritabanına teklif yazma yetkiniz yok.\n\nÇözüm: Firebase Konsolunuzda Cloud Firestore > Rules (Kurallar) sekmesinden okuma/yazma izinlerini herkese açık (veya test moduna) düzenleyiniz.'
+        );
+      } else if (errorCode === 'not-found' || errorMsg.includes('NOT_FOUND') || errorMsg.includes('database does not exist')) {
+        Alert.alert(
+          'Veritabanı Bulunamadı',
+          'Firebase projenizde Cloud Firestore veritabanı oluşturulmamış.\n\nÇözüm: Firebase Konsolunuzdan Cloud Firestore sekmesine girip \'Veritabanı Oluştur\' butonuna basınız.'
+        );
+      } else {
+        Alert.alert('Hata', 'Teklif iletilirken bir hata oluştu: ' + errorMsg);
+      }
     } finally {
       setSubmittingBid(false);
     }
@@ -1089,7 +1124,7 @@ export default function ContractorPortal({ onBack }) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color={PORTAL_COLORS.bg} size="small" />
+          <ActivityIndicator color={PORTAL_COLORS.buttonText} size="small" />
         ) : (
           <Text style={styles.authBtnText}>{isRegister ? 'Hesap Oluştur' : 'Giriş Yap'}</Text>
         )}
@@ -1358,7 +1393,7 @@ export default function ContractorPortal({ onBack }) {
                               style={[styles.showMapBtn, { flex: 1, marginTop: 0 }]}
                               onPress={() => handleShowRequestOnMap(item)}
                             >
-                              <MapPin size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                              <MapPin size={16} color={PORTAL_COLORS.buttonText} style={{ marginRight: 6 }} />
                               <Text style={styles.showMapBtnText}>Haritada Göster</Text>
                             </TouchableOpacity>
                           )}
@@ -1387,8 +1422,8 @@ export default function ContractorPortal({ onBack }) {
                               setBidModalOpen(true);
                             }}
                           >
-                            <Briefcase size={16} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
-                            <Text style={[styles.showMapBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg }]}>
+                            <Briefcase size={16} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText} style={{ marginRight: 6 }} />
+                            <Text style={[styles.showMapBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText }]}>
                               {existingBid ? 'Teklifi Güncelle' : 'Teklif Ver'}
                             </Text>
                           </TouchableOpacity>
@@ -1410,7 +1445,7 @@ export default function ContractorPortal({ onBack }) {
                 onPress={handleSeedRequests}
                 activeOpacity={0.8}
               >
-                <Building size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                <Building size={16} color={PORTAL_COLORS.buttonText} style={{ marginRight: 6 }} />
                 <Text style={styles.seedRequestsBtnText}>Örnek Talepleri Yükle</Text>
               </TouchableOpacity>
             </View>
@@ -1428,7 +1463,7 @@ export default function ContractorPortal({ onBack }) {
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
-          customMapStyle={DARK_MAP_STYLE}
+          customMapStyle={undefined}
           showsUserLocation={true}
           followsUserLocation={false}
           initialRegion={mapFocusCoordinate ? {
@@ -1618,8 +1653,8 @@ export default function ContractorPortal({ onBack }) {
                         setBidModalOpen(true);
                       }}
                     >
-                      <Briefcase size={14} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
-                      <Text style={[styles.mapCardPhoneBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg }]}>
+                      <Briefcase size={14} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText} style={{ marginRight: 6 }} />
+                      <Text style={[styles.mapCardPhoneBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText }]}>
                         {existingBid ? 'Güncelle' : 'Teklif'}
                       </Text>
                     </TouchableOpacity>
@@ -1713,7 +1748,7 @@ export default function ContractorPortal({ onBack }) {
                 <Text style={styles.profileCompanyName}>{contractorInfo?.companyName || 'Yükleniyor...'}</Text>
                 {contractorInfo?.verified && (
                   <View style={styles.verifiedBadge}>
-                    <Check size={10} color={PORTAL_COLORS.bg} />
+                    <Check size={10} color="#FFFFFF" />
                   </View>
                 )}
               </View>
@@ -1790,7 +1825,7 @@ export default function ContractorPortal({ onBack }) {
                 disabled={savingProfile}
               >
                 {savingProfile ? (
-                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.buttonText} />
                 ) : (
                   <Text style={styles.saveProfileBtnText}>Kaydet</Text>
                 )}
@@ -1805,7 +1840,7 @@ export default function ContractorPortal({ onBack }) {
               style={styles.addProjectBtn}
               onPress={() => setAddProjectModalOpen(true)}
             >
-              <Plus size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 4 }} />
+              <Plus size={16} color={PORTAL_COLORS.buttonText} style={{ marginRight: 4 }} />
               <Text style={styles.addProjectBtnText}>Proje Ekle</Text>
             </TouchableOpacity>
           </View>
@@ -2070,7 +2105,7 @@ export default function ContractorPortal({ onBack }) {
                 disabled={savingProject}
               >
                 {savingProject ? (
-                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.buttonText} />
                 ) : (
                   <Text style={styles.publishProjectBtnText}>Proje Yayınla</Text>
                 )}
@@ -2160,7 +2195,7 @@ export default function ContractorPortal({ onBack }) {
                 disabled={submittingBid}
               >
                 {submittingBid ? (
-                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.buttonText} />
                 ) : (
                   <Text style={styles.publishProjectBtnText}>
                     {existingBid ? 'Teklifi Güncelle' : 'Teklifi Gönder'}
@@ -2285,7 +2320,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   authInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
@@ -2335,7 +2370,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   authBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 16,
   },
@@ -2499,7 +2534,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 8,
     zIndex: 1000,
@@ -2536,7 +2571,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     alignSelf: 'center',
-    backgroundColor: 'rgba(7, 10, 19, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: PORTAL_COLORS.accent, // Gold border
@@ -2544,14 +2579,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 5,
   },
   mapInfoText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     letterSpacing: 0.5,
   },
   expandedSection: {
@@ -2568,7 +2603,7 @@ const styles = StyleSheet.create({
   expandedSectionTitle: {
     fontFamily: FONTS.bold,
     fontSize: 9.5,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
     letterSpacing: 1,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -2585,13 +2620,13 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontFamily: FONTS.medium,
     fontSize: 11,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     marginBottom: 2,
   },
   detailValue: {
     fontFamily: FONTS.bold,
     fontSize: 13,
-    color: '#F1F5F9',
+    color: PORTAL_COLORS.textTitle,
   },
   phoneCallBtn: {
     backgroundColor: 'rgba(16, 185, 129, 0.12)',
@@ -2617,7 +2652,7 @@ const styles = StyleSheet.create({
   breakdownBox: {
     flex: 1,
     minWidth: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 8,
@@ -2633,7 +2668,7 @@ const styles = StyleSheet.create({
   breakdownVal: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   showMapBtn: {
     backgroundColor: PORTAL_COLORS.accent,
@@ -2645,7 +2680,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   showMapBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 12,
   },
@@ -2675,19 +2710,19 @@ const styles = StyleSheet.create({
   },
   closeMapCardBtn: {
     padding: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
     borderRadius: 8,
   },
   mapBottomCardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     marginBottom: 10,
   },
   mapBottomCardStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
@@ -2706,7 +2741,7 @@ const styles = StyleSheet.create({
   mapStatValue: {
     fontFamily: FONTS.bold,
     fontSize: 12.5,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   mapBottomCardScroll: {
     flexGrow: 0,
@@ -2723,7 +2758,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   mapCardPhoneBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 12,
   },
@@ -2792,12 +2827,12 @@ const styles = StyleSheet.create({
   profileStatNumber: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   profileStatLabel: {
     fontFamily: FONTS.medium,
     fontSize: 11,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
     marginTop: 2,
   },
   profileNameBio: {
@@ -2806,7 +2841,7 @@ const styles = StyleSheet.create({
   profileCompanyName: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     marginRight: 6,
   },
   verifiedBadge: {
@@ -2820,19 +2855,19 @@ const styles = StyleSheet.create({
   profileEmail: {
     fontFamily: FONTS.regular,
     fontSize: 12.5,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     marginBottom: 10,
   },
   profileInfoText: {
     fontFamily: FONTS.medium,
     fontSize: 12.5,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
     marginTop: 6,
     flexDirection: 'row',
     alignItems: 'center',
   },
   editProfileBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 10,
@@ -2842,18 +2877,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   editProfileBtnText: {
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     fontFamily: FONTS.bold,
     fontSize: 13,
   },
   profileInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     fontFamily: FONTS.regular,
     fontSize: 14.5,
     marginBottom: 14,
@@ -2867,7 +2902,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   saveProfileBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 14.5,
   },
@@ -2888,7 +2923,7 @@ const styles = StyleSheet.create({
   portfolioTitle: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   addProjectBtn: {
     flexDirection: 'row',
@@ -2899,7 +2934,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   addProjectBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 12,
   },
@@ -2916,13 +2951,13 @@ const styles = StyleSheet.create({
   emptyPortfolioText: {
     fontFamily: FONTS.bold,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     marginBottom: 4,
   },
   emptyPortfolioSub: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -2960,7 +2995,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(7, 10, 19, 0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -2975,7 +3010,7 @@ const styles = StyleSheet.create({
     maxHeight: 520,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
   },
@@ -2991,22 +3026,22 @@ const styles = StyleSheet.create({
   projectModalTitle: {
     fontFamily: FONTS.bold,
     fontSize: 16.5,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   projectModalSub: {
     fontFamily: FONTS.medium,
     fontSize: 11.5,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
   },
   closeProjectModalBtn: {
     padding: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
     borderRadius: 10,
   },
   modalCarouselContainer: {
     width: '100%',
     aspectRatio: 1.5,
-    backgroundColor: '#03050a',
+    backgroundColor: '#F1F5F9',
     position: 'relative',
   },
   modalCarouselImage: {
@@ -3050,7 +3085,7 @@ const styles = StyleSheet.create({
   likeBtnText: {
     fontFamily: FONTS.bold,
     fontSize: 13,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
   },
   projectModalScroll: {
     padding: 20,
@@ -3059,7 +3094,7 @@ const styles = StyleSheet.create({
   projectModalDescription: {
     fontFamily: FONTS.regular,
     fontSize: 13.5,
-    color: '#E2E8F0',
+    color: PORTAL_COLORS.textBody,
     lineHeight: 20,
     paddingBottom: 20,
   },
@@ -3107,12 +3142,12 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: '#F8FAFC',
   },
   pickImageBtnText: {
     fontFamily: FONTS.bold,
     fontSize: 8.5,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
     marginTop: 4,
   },
   publishProjectBtn: {
@@ -3124,7 +3159,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   publishProjectBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 14.5,
   },
@@ -3137,13 +3172,13 @@ const styles = StyleSheet.create({
   emptyRequestsText: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     marginTop: 12,
   },
   emptyRequestsSub: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     textAlign: 'center',
     marginTop: 4,
     paddingHorizontal: 20,
@@ -3163,7 +3198,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   seedRequestsBtnText: {
-    color: PORTAL_COLORS.bg,
+    color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 13,
   },
