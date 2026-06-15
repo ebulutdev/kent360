@@ -12,40 +12,91 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Linking
+  Linking,
+  Image,
+  Modal
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy } from 'firebase/firestore';
-import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe } from 'lucide-react-native';
+import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db, isMock } from '../../firebaseConfig';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
+
 
 const { width } = Dimensions.get('window');
 
+const PORTAL_COLORS = {
+  bg: '#070A13',            // Derin Obsidiyen Siyahı/Mavisi
+  card: '#131924',          // Zengin Kömür Grisi / Kart Arka Planı
+  border: 'rgba(197, 168, 128, 0.08)', // İnce Şampanya Altını Çerçeveler
+  accent: '#C5A880',        // Mat Fırçalanmış Şampanya Altını
+  accentLight: '#E5D5C0',   // Açık Şampanya Altını
+  accentBg: 'rgba(197, 168, 128, 0.15)', // Şampanya Altını Düşük Opaklıklı Etiket Arka Planı
+  textTitle: '#FFFFFF',     // Beyaz Başlıklar
+  textBody: '#94A3B8',      // Slate 300 Gövde
+  textMuted: '#64748B',     // Slate 500 Muted
+  verified: '#10B981',      // Onay Yeşili
+  verifiedBg: 'rgba(16, 185, 129, 0.12)',
+  danger: '#EF4444',
+  dangerBg: 'rgba(239, 68, 68, 0.15)'
+};
+
 const DARK_MAP_STYLE = [
-  { "elementType": "geometry", "stylers": [{ "color": "#0F172A" }] },
+  { "elementType": "geometry", "stylers": [{ "color": "#131924" }] },
   { "elementType": "labels.text.fill", "stylers": [{ "color": "#94A3B8" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#0F172A" }] },
-  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#334155" }] },
-  { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "#475569" }] },
-  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#0B0F19" }] },
-  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#0F172A" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#131924" }] },
+  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "rgba(197, 168, 128, 0.15)" }] },
+  { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "rgba(197, 168, 128, 0.15)" }] },
+  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#070A13" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#131924" }] },
   { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#64748B" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#1E293B" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#1a2130" }] },
   { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#94A3B8" }] },
-  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#334155" }] },
-  { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#1E293B" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#020617" }] },
-  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#475569" }] }
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#1f293d" }] },
+  { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#131924" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#03050a" }] },
+  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#64748B" }] }
+];
+
+const getDemoProjects = () => [
+  {
+    id: 'demo_proj_1',
+    title: 'Fetsan Kadıköy Modern',
+    location: 'Kadıköy, İstanbul',
+    year: '2024',
+    description: 'Kadıköy\'ün kalbinde yer alan bu projemizde, deprem riski taşıyan 40 yıllık eski bir apartmanı sıfırdan yıkarak modern mimari standartlara, yeşil enerji sertifikalarına ve geniş sosyal alanlara sahip A+ konsept bir yapı haline getirdik. Toplamda 24 lüks daire ve 3 ticari alandan oluşmaktadır.',
+    images: [
+      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80'
+    ],
+    likes: 42,
+    likedByMe: false
+  },
+  {
+    id: 'demo_proj_2',
+    title: 'Beşiktaş Vadi Evleri',
+    location: 'Beşiktaş, İstanbul',
+    year: '2023',
+    description: 'Beşiktaş Ihlamurdere vadisinde konumlanan 4 bloklu sitemizi, hak sahipleriyle %100 uzlaşı sağlayarak ada bazlı imar artışı avantajıyla yeniledik. Akıllı ev sistemleri, kapalı otoparkı ve geniş peyzaj alanıyla bölgenin en prestijli projelerinden biri haline gelmiştir.',
+    images: [
+      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&auto=format&fit=crop&q=80'
+    ],
+    likes: 88,
+    likedByMe: true
+  }
 ];
 
 export default function ContractorPortal({ onBack }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
+  const carouselRef = useRef(null);
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,6 +111,40 @@ export default function ContractorPortal({ onBack }) {
   const [mapFocusCoordinate, setMapFocusCoordinate] = useState(null);
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
   const [loadingGps, setLoadingGps] = useState(false);
+
+  const [contractorInfo, setContractorInfo] = useState(null);
+  const [contractorProjects, setContractorProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // Profile Edit fields
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editWebsite, setEditWebsite] = useState('');
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Add Project fields
+  const [addProjectModalOpen, setAddProjectModalOpen] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [newProjectLocation, setNewProjectLocation] = useState('');
+  const [newProjectYear, setNewProjectYear] = useState('');
+  const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [newProjectImages, setNewProjectImages] = useState([]); // Array of base64 strings
+  const [savingProject, setSavingProject] = useState(false);
+
+  // Project Detail Viewer
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [activeDetailImageIdx, setActiveDetailImageIdx] = useState(0);
+
+  // Bidding states
+  const [bidModalOpen, setBidModalOpen] = useState(false);
+  const [selectedRequestForBid, setSelectedRequestForBid] = useState(null);
+  const [bidShare, setBidShare] = useState('45');
+  const [bidCostPerSqm, setBidCostPerSqm] = useState('32000');
+  const [bidNotes, setBidNotes] = useState('');
+  const [submittingBid, setSubmittingBid] = useState(false);
+  const [myBids, setMyBids] = useState([]);
 
   useEffect(() => {
     let unsubscribeAuth = null;
@@ -82,13 +167,191 @@ export default function ContractorPortal({ onBack }) {
           if (isMock) {
             setRequests(localSubmissions);
             setLoadingRequests(false);
+
+            // Load Mock Profile
+            const mockProfile = {
+              companyName: 'Kent360 İnşaat A.Ş.',
+              email: currUser.email || 'muteahhit@kent360.com',
+              phone: '0555 123 45 67',
+              address: 'Fetsan Plaza Kat:4, Kadıköy / İstanbul',
+              website: 'www.fetsangrup.com',
+              verified: true
+            };
+            setContractorInfo(mockProfile);
+            setEditCompanyName(mockProfile.companyName);
+            setEditPhone(mockProfile.phone);
+            setEditAddress(mockProfile.address);
+            setEditWebsite(mockProfile.website);
+
+            // Load Mock Projects
+            try {
+              const localProjectsStr = await AsyncStorage.getItem('@contractor_projects');
+              let localProjects = localProjectsStr ? JSON.parse(localProjectsStr) : [];
+              if (localProjects.length === 0) {
+                localProjects = getDemoProjects();
+                await AsyncStorage.setItem('@contractor_projects', JSON.stringify(localProjects));
+              }
+              setContractorProjects(localProjects);
+            } catch (e) {
+              console.error("Error loading mock projects:", e);
+            }
+
+            // Load Mock Bids
+            try {
+              const localBidsStr = await AsyncStorage.getItem('@contractor_bids');
+              const localBids = localBidsStr ? JSON.parse(localBidsStr) : [];
+              setMyBids(localBids);
+            } catch (e) {
+              console.error("Error loading mock bids:", e);
+            }
             return;
           }
 
+          // Online Mode
           try {
+            // Fetch Contractor Profile with 4-second timeout
+            let profile = null;
+            const profileCacheKey = '@contractor_profile_' + currUser.uid;
+            try {
+              const fetchProfile = async () => {
+                const qProfile = query(collection(db, 'contractors'), where('uid', '==', currUser.uid), limit(1));
+                const profileSnap = await getDocs(qProfile);
+                if (!profileSnap.empty) {
+                  const docSnap = profileSnap.docs[0];
+                  return { id: docSnap.id, ...docSnap.data() };
+                }
+                return null;
+              };
+
+              profile = await Promise.race([
+                fetchProfile(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+              ]);
+            } catch (err) {
+              console.warn("Failed or timed out fetching online profile, loading local cache:", err);
+            }
+
+            if (!profile) {
+              // Load from local storage
+              try {
+                const cached = await AsyncStorage.getItem(profileCacheKey);
+                if (cached) {
+                  profile = JSON.parse(cached);
+                }
+              } catch (e) {
+                console.error("Error reading cached profile:", e);
+              }
+            }
+
+            if (!profile) {
+              profile = {
+                companyName: currUser.displayName || 'Kayıtlı Müteahhit',
+                email: currUser.email,
+                phone: '',
+                address: '',
+                website: '',
+                verified: false
+              };
+            }
+
+            setContractorInfo(profile);
+            setEditCompanyName(profile.companyName || '');
+            setEditPhone(profile.phone || '');
+            setEditAddress(profile.address || '');
+            setEditWebsite(profile.website || '');
+
+            // Fetch Contractor Projects with 4-second timeout
+            const cacheKey = '@contractor_projects_' + currUser.uid;
+            let localProjects = [];
+            try {
+              const localProjectsStr = await AsyncStorage.getItem(cacheKey);
+              localProjects = localProjectsStr ? JSON.parse(localProjectsStr) : [];
+            } catch (e) {
+              console.error("Error loading local projects:", e);
+            }
+
+            let onlineProjects = null;
+            try {
+              const fetchProjects = async () => {
+                const qProj = query(collection(db, 'contractor_projects'), where('uid', '==', currUser.uid));
+                const projSnap = await getDocs(qProj);
+                const fetched = [];
+                projSnap.forEach(doc => {
+                  fetched.push({ id: doc.id, ...doc.data() });
+                });
+                return fetched;
+              };
+
+              onlineProjects = await Promise.race([
+                fetchProjects(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+              ]);
+
+              // Seed demo projects if it's the demo account and database has no projects
+              if (onlineProjects && onlineProjects.length === 0 && currUser.email === 'muteahhit@kent360.com') {
+                const demo = getDemoProjects();
+                const seeded = [];
+                for (let proj of demo) {
+                  try {
+                    const docRef = await addDoc(collection(db, 'contractor_projects'), {
+                      ...proj,
+                      uid: currUser.uid,
+                      createdAt: new Date().toISOString()
+                    });
+                    seeded.push({ id: docRef.id, ...proj, uid: currUser.uid });
+                  } catch (seedErr) {
+                    console.warn("Failed to write seed project online:", seedErr);
+                    seeded.push({ id: 'demo_proj_' + Math.random().toString(36).substring(7), ...proj, uid: currUser.uid });
+                  }
+                }
+                onlineProjects = seeded;
+              }
+            } catch (projError) {
+              console.warn("Error/Timeout loading online projects:", projError);
+            }
+
+            const finalProjects = (onlineProjects && onlineProjects.length > 0) ? onlineProjects : localProjects;
+            setContractorProjects(finalProjects);
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(finalProjects));
+
+            // Fetch Bids/Offers
+            try {
+              const fetchBids = async () => {
+                const qBids = query(collection(db, 'offers'), where('contractorId', '==', currUser.uid));
+                const bidsSnap = await getDocs(qBids);
+                const fetched = [];
+                bidsSnap.forEach(doc => {
+                  fetched.push({ id: doc.id, ...doc.data() });
+                });
+                return fetched;
+              };
+              const onlineBids = await Promise.race([
+                fetchBids(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+              ]);
+              setMyBids(onlineBids);
+              await AsyncStorage.setItem('@contractor_bids_' + currUser.uid, JSON.stringify(onlineBids));
+            } catch (e) {
+              console.warn("Failed or timed out fetching online bids, reading cache:", e);
+              const bidsCacheKey = '@contractor_bids_' + currUser.uid;
+              const cachedBids = await AsyncStorage.getItem(bidsCacheKey);
+              if (cachedBids) {
+                setMyBids(JSON.parse(cachedBids));
+              }
+            }
+
             // Listen to submissions in real time, sorted by newest first
             const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
+            
+            // 4-second timeout to dismiss loading state and show local data if Firestore hangs
+            const loadTimeout = setTimeout(() => {
+              console.warn("Firestore snapshot listener timed out, showing local data");
+              setRequests(localSubmissions);
+              setLoadingRequests(false);
+            }, 4000);
+
             unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+              clearTimeout(loadTimeout);
               const onlineFetched = [];
               snapshot.forEach((doc) => {
                 onlineFetched.push({ id: doc.id, ...doc.data() });
@@ -112,6 +375,7 @@ export default function ContractorPortal({ onBack }) {
               setRequests(mergedArray);
               setLoadingRequests(false);
             }, (error) => {
+              clearTimeout(loadTimeout);
               console.error("Firestore real-time snapshot error:", error);
               setRequests(localSubmissions);
               setLoadingRequests(false);
@@ -185,13 +449,33 @@ export default function ContractorPortal({ onBack }) {
             return;
           }
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          // Firestore'a müteahhit firma kaydı ekle
-          await addDoc(collection(db, 'contractors'), {
-            uid: userCredential.user.uid,
+          
+          const defaultProfile = {
             companyName: companyName.trim(),
             email: email.trim(),
-            createdAt: new Date().toISOString()
-          });
+            uid: userCredential.user.uid,
+            createdAt: new Date().toISOString(),
+            verified: false
+          };
+
+          try {
+            const runProfileWrite = async () => {
+              const docRef = await addDoc(collection(db, 'contractors'), defaultProfile);
+              return docRef.id;
+            };
+
+            const profileId = await Promise.race([
+              runProfileWrite(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+            ]);
+            defaultProfile.id = profileId;
+          } catch (writeErr) {
+            console.warn("Auth profile write to Firestore failed/timed out, saving locally:", writeErr);
+            defaultProfile.id = 'profile_local_' + Math.random().toString(36).substring(7);
+          }
+
+          // Always save locally to ensure it can be loaded offline
+          await AsyncStorage.setItem('@contractor_profile_' + userCredential.user.uid, JSON.stringify(defaultProfile));
           setUser(userCredential.user);
         } else {
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -213,6 +497,7 @@ export default function ContractorPortal({ onBack }) {
       }
       setUser(null);
       setRequests([]);
+      setMyBids([]);
     } catch (error) {
       console.error("Çıkış hatası:", error);
     }
@@ -236,7 +521,10 @@ export default function ContractorPortal({ onBack }) {
 
     try {
       const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await Promise.race([
+        getDocs(q),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
       const fetched = [];
       querySnapshot.forEach((doc) => {
         fetched.push({ id: doc.id, ...doc.data() });
@@ -265,50 +553,532 @@ export default function ContractorPortal({ onBack }) {
     }
   };
 
+  const handleSeedRequests = async () => {
+    const sampleSubmissions = [
+      {
+        id: 'sample_sub_1',
+        buildingType: 'single',
+        scopeType: 'single_building',
+        unionType: '',
+        buildingCount: 1,
+        city: 'İstanbul',
+        district: 'Kadıköy',
+        deeds: { single: { ada: '1250', parsel: '4' } },
+        coordinates: { latitude: 40.9910, longitude: 29.0270 },
+        width: 24,
+        depth: 26,
+        floorsCount: 5,
+        isMansart: false,
+        name: 'Ahmet',
+        surname: 'Yılmaz',
+        phone: '5321112233',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+        buildingStructures: {
+          single: {
+            roofType: 'normal',
+            averageSqm: 110,
+            floors: [
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u1'}, {type:'daire', name:'Daire', id:'u2'}] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u3'}, {type:'daire', name:'Daire', id:'u4'}] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u5'}, {type:'daire', name:'Daire', id:'u6'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u7'}, {type:'daire', name:'Daire', id:'u8'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'u9'}, {type:'daire', name:'Daire', id:'u10'}] }
+            ]
+          }
+        }
+      },
+      {
+        id: 'sample_sub_2',
+        buildingType: 'complex',
+        scopeType: 'site',
+        unionType: 'block_based',
+        buildingCount: 3,
+        totalBuildingCount: 4,
+        city: 'İstanbul',
+        district: 'Beşiktaş',
+        deeds: {
+          A: { ada: '4320', parsel: '12' },
+          B: { ada: '4320', parsel: '12' },
+          C: { ada: '4320', parsel: '12' }
+        },
+        coordinates: { latitude: 41.0428, longitude: 29.0075 },
+        width: 28,
+        depth: 30,
+        floorsCount: 4,
+        isMansart: true,
+        name: 'Mehmet',
+        surname: 'Kaya',
+        phone: '5054445566',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        buildingStructures: {
+          A: {
+            roofType: 'mansart',
+            averageSqm: 120,
+            floors: [
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a1'}, {type:'daire', name:'Daire', id:'a2'}] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a3'}, {type:'daire', name:'Daire', id:'a4'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a5'}, {type:'daire', name:'Daire', id:'a6'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'a7'}, {type:'daire', name:'Daire', id:'a8'}] }
+            ]
+          },
+          B: {
+            roofType: 'normal',
+            averageSqm: 120,
+            floors: [
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b1'}, {type:'daire', name:'Daire', id:'b2'}] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b3'}, {type:'daire', name:'Daire', id:'b4'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b5'}, {type:'daire', name:'Daire', id:'b6'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'b7'}, {type:'daire', name:'Daire', id:'b8'}] }
+            ]
+          },
+          C: {
+            roofType: 'normal',
+            averageSqm: 100,
+            floors: [
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'c1'}, {type:'daire', name:'Daire', id:'c2'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'c3'}, {type:'daire', name:'Daire', id:'c4'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'c5'}, {type:'daire', name:'Daire', id:'c6'}] }
+            ]
+          }
+        }
+      },
+      {
+        id: 'sample_sub_3',
+        buildingType: 'single',
+        scopeType: 'multi_building',
+        unionType: 'multi_parcel',
+        buildingCount: 2,
+        city: 'Ankara',
+        district: 'Çankaya',
+        deeds: {
+          building_1: { ada: '8890', parsel: '5' },
+          building_2: { ada: '8890', parsel: '6' }
+        },
+        coordinates: { latitude: 39.9080, longitude: 32.8622 },
+        width: 26,
+        depth: 28,
+        floorsCount: 6,
+        isMansart: false,
+        name: 'Mustafa',
+        surname: 'Öztürk',
+        phone: '5443332211',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+        buildingStructures: {
+          building_1: {
+            roofType: 'normal',
+            averageSqm: 115,
+            floors: [
+              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d1'}, {type:'daire', name:'Daire', id:'d2'}] },
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d3'}, {type:'daire', name:'Daire', id:'d4'}] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d5'}, {type:'daire', name:'Daire', id:'d6'}] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d7'}, {type:'daire', name:'Daire', id:'d8'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d9'}, {type:'daire', name:'Daire', id:'d10'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'d11'}, {type:'daire', name:'Daire', id:'d12'}] }
+            ]
+          },
+          building_2: {
+            roofType: 'normal',
+            averageSqm: 115,
+            floors: [
+              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e1'}, {type:'daire', name:'Daire', id:'e2'}] },
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e3'}, {type:'daire', name:'Daire', id:'e4'}] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e5'}, {type:'daire', name:'Daire', id:'e6'}] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e7'}, {type:'daire', name:'Daire', id:'e8'}] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e9'}, {type:'daire', name:'Daire', id:'e10'}] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'e11'}, {type:'daire', name:'Daire', id:'e12'}] }
+            ]
+          }
+        }
+      }
+    ];
+
+    try {
+      if (isMock) {
+        setRequests(sampleSubmissions);
+        await AsyncStorage.setItem('@local_submissions', JSON.stringify(sampleSubmissions));
+      } else {
+        await AsyncStorage.setItem('@local_submissions', JSON.stringify(sampleSubmissions));
+        setRequests(sampleSubmissions);
+      }
+      Alert.alert('Başarılı', '3 adet örnek dönüşüm talebi sisteme eklendi.');
+    } catch (e) {
+      console.error("Error seeding submissions:", e);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editCompanyName.trim()) {
+      Alert.alert('Eksik Bilgi', 'Firma adı boş bırakılamaz.');
+      return;
+    }
+
+    setSavingProfile(true);
+    const updatedProfile = {
+      ...contractorInfo,
+      companyName: editCompanyName.trim(),
+      phone: editPhone.trim(),
+      address: editAddress.trim(),
+      website: editWebsite.trim()
+    };
+
+    try {
+      if (isMock) {
+        setContractorInfo(updatedProfile);
+        Alert.alert('Başarılı', 'Profil bilgileri kaydedildi (Yerel mod).');
+        setShowEditForm(false);
+      } else {
+        const runProfileWrite = async () => {
+          if (contractorInfo && contractorInfo.id) {
+            const docRef = doc(db, 'contractors', contractorInfo.id);
+            await updateDoc(docRef, {
+              companyName: editCompanyName.trim(),
+              phone: editPhone.trim(),
+              address: editAddress.trim(),
+              website: editWebsite.trim()
+            });
+            return contractorInfo.id;
+          } else {
+            const docRef = await addDoc(collection(db, 'contractors'), {
+              uid: user.uid,
+              companyName: editCompanyName.trim(),
+              phone: editPhone.trim(),
+              address: editAddress.trim(),
+              website: editWebsite.trim(),
+              createdAt: new Date().toISOString()
+            });
+            return docRef.id;
+          }
+        };
+
+        try {
+          // 6-second timeout for Firestore write
+          const profileId = await Promise.race([
+            runProfileWrite(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+          ]);
+          updatedProfile.id = profileId;
+          setContractorInfo(updatedProfile);
+          await AsyncStorage.setItem('@contractor_profile_' + user.uid, JSON.stringify(updatedProfile));
+          Alert.alert('Başarılı', 'Profil bilgileri veritabanına kaydedildi.');
+          setShowEditForm(false);
+        } catch (writeErr) {
+          console.warn("Profile save to Firestore timed out or failed, saving locally:", writeErr);
+          setContractorInfo(updatedProfile);
+          await AsyncStorage.setItem('@contractor_profile_' + user.uid, JSON.stringify(updatedProfile));
+          Alert.alert('Yerel Kayıt Yapıldı', 'Veritabanı bağlantısı kurulamadığı için profil bilgileri yerel hafızaya kaydedildi.');
+          setShowEditForm(false);
+        }
+      }
+    } catch (e) {
+      console.error("Error saving profile:", e);
+      Alert.alert('Hata', 'Profil kaydedilirken hata oluştu.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('İzin Gerekli', 'Galeriden fotoğraf seçebilmek için izin vermeniz gerekmektedir.');
+      return;
+    }
+
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: 5 - newProjectImages.length,
+        quality: 0.5,
+        base64: true
+      });
+
+      if (!result.canceled) {
+        const selected = result.assets.map(asset => `data:image/jpeg;base64,${asset.base64}`);
+        setNewProjectImages(prev => [...prev, ...selected].slice(0, 5));
+      }
+    } catch (e) {
+      console.error("Error picking image:", e);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  const handleSaveProject = async () => {
+    if (!newProjectTitle.trim() || !newProjectDesc.trim() || !newProjectLocation.trim() || !newProjectYear.trim()) {
+      Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurunuz.');
+      return;
+    }
+    if (newProjectImages.length === 0) {
+      Alert.alert('Fotoğraf Eksik', 'Lütfen projeniz için en az 1 adet fotoğraf seçiniz.');
+      return;
+    }
+
+    setSavingProject(true);
+    const newProject = {
+      title: newProjectTitle.trim(),
+      description: newProjectDesc.trim(),
+      location: newProjectLocation.trim(),
+      year: newProjectYear.trim(),
+      images: newProjectImages,
+      likes: 0,
+      likedByMe: false
+    };
+
+    try {
+      if (isMock) {
+        newProject.id = 'proj_' + Math.random().toString(36).substring(7);
+        const updatedList = [newProject, ...contractorProjects];
+        setContractorProjects(updatedList);
+        await AsyncStorage.setItem('@contractor_projects', JSON.stringify(updatedList));
+        Alert.alert('Başarılı', 'Projeniz portfolyonuza eklendi.');
+      } else {
+        const runProjectWrite = async () => {
+          const docRef = await addDoc(collection(db, 'contractor_projects'), {
+            ...newProject,
+            uid: user.uid,
+            createdAt: new Date().toISOString()
+          });
+          return docRef.id;
+        };
+
+        try {
+          // 6-second timeout for Firestore write
+          const projectId = await Promise.race([
+            runProjectWrite(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+          ]);
+          newProject.id = projectId;
+          const updatedList = [newProject, ...contractorProjects];
+          setContractorProjects(updatedList);
+          await AsyncStorage.setItem('@contractor_projects_' + user.uid, JSON.stringify(updatedList));
+          Alert.alert('Başarılı', 'Projeniz portfolyonuza eklendi.');
+        } catch (writeErr) {
+          console.warn("Project save to Firestore timed out or failed, saving locally:", writeErr);
+          // Fallback to local storage
+          newProject.id = 'proj_local_' + Math.random().toString(36).substring(7);
+          const updatedList = [newProject, ...contractorProjects];
+          setContractorProjects(updatedList);
+          await AsyncStorage.setItem('@contractor_projects_' + user.uid, JSON.stringify(updatedList));
+          Alert.alert('Yerel Kayıt Yapıldı', 'Firebase veritabanı bulunamadığı için projeniz yerel belleğe kaydedildi.');
+        }
+      }
+
+      // Reset form
+      setNewProjectTitle('');
+      setNewProjectDesc('');
+      setNewProjectLocation('');
+      setNewProjectYear('');
+      setNewProjectImages([]);
+      setAddProjectModalOpen(false);
+    } catch (e) {
+      console.error("Error adding project:", e);
+      Alert.alert('Hata', 'Proje eklenirken bir hata oluştu.');
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleSendBid = async () => {
+    if (!bidShare.trim() || !bidCostPerSqm.trim()) {
+      Alert.alert('Eksik Bilgi', 'Lütfen teklif yüzdesi ve maliyeti alanlarını doldurunuz.');
+      return;
+    }
+
+    setSubmittingBid(true);
+
+    const shareNum = parseFloat(bidShare.replace(/[^0-9.]/g, ''));
+    const costNum = parseFloat(bidCostPerSqm.replace(/[^0-9.]/g, ''));
+
+    if (isNaN(shareNum) || shareNum <= 0 || shareNum >= 100) {
+      Alert.alert('Geçersiz Değer', 'Lütfen 0 ile 100 arasında geçerli bir Müteahhit Payı giriniz.');
+      setSubmittingBid(false);
+      return;
+    }
+
+    if (isNaN(costNum) || costNum <= 0) {
+      Alert.alert('Geçersiz Değer', 'Lütfen geçerli bir Yapım Maliyeti giriniz.');
+      setSubmittingBid(false);
+      return;
+    }
+
+    const newBid = {
+      submissionId: selectedRequestForBid.id,
+      contractorId: user.uid,
+      companyName: contractorInfo?.companyName || 'Kent360 İnşaat A.Ş.',
+      verified: contractorInfo?.verified || false,
+      contractorShare: shareNum,
+      costPerSqm: costNum,
+      notes: bidNotes.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      if (isMock) {
+        newBid.id = 'bid_' + Math.random().toString(36).substring(7);
+        const filteredBids = myBids.filter(b => b.submissionId !== selectedRequestForBid.id);
+        const updatedBids = [newBid, ...filteredBids];
+        setMyBids(updatedBids);
+        await AsyncStorage.setItem('@contractor_bids', JSON.stringify(updatedBids));
+
+        const globalOffersStr = await AsyncStorage.getItem('@global_mock_offers');
+        const globalOffers = globalOffersStr ? JSON.parse(globalOffersStr) : [];
+        const filteredGlobal = globalOffers.filter(b => !(b.submissionId === selectedRequestForBid.id && b.contractorId === user.uid));
+        const updatedGlobal = [newBid, ...filteredGlobal];
+        await AsyncStorage.setItem('@global_mock_offers', JSON.stringify(updatedGlobal));
+
+        Alert.alert('Başarılı', 'Teklifiniz başarıyla iletildi (Yerel mod).');
+      } else {
+        const runBidWrite = async () => {
+          const qExist = query(
+            collection(db, 'offers'),
+            where('submissionId', '==', selectedRequestForBid.id),
+            where('contractorId', '==', user.uid)
+          );
+          const existSnap = await getDocs(qExist);
+          
+          if (!existSnap.empty) {
+            const bidDocId = existSnap.docs[0].id;
+            const docRef = doc(db, 'offers', bidDocId);
+            await updateDoc(docRef, {
+              contractorShare: shareNum,
+              costPerSqm: costNum,
+              notes: bidNotes.trim(),
+              createdAt: new Date().toISOString()
+            });
+            return bidDocId;
+          } else {
+            const docRef = await addDoc(collection(db, 'offers'), newBid);
+            return docRef.id;
+          }
+        };
+
+        try {
+          const bidId = await Promise.race([
+            runBidWrite(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+
+          newBid.id = bidId;
+          const filteredBids = myBids.filter(b => b.submissionId !== selectedRequestForBid.id);
+          const updatedBids = [newBid, ...filteredBids];
+          setMyBids(updatedBids);
+          await AsyncStorage.setItem('@contractor_bids_' + user.uid, JSON.stringify(updatedBids));
+
+          // Also save to global mock offers as fallback for citizen tracking
+          const globalOffersStr = await AsyncStorage.getItem('@global_mock_offers');
+          const globalOffers = globalOffersStr ? JSON.parse(globalOffersStr) : [];
+          const filteredGlobal = globalOffers.filter(b => !(b.submissionId === selectedRequestForBid.id && b.contractorId === user.uid));
+          const updatedGlobal = [newBid, ...filteredGlobal];
+          await AsyncStorage.setItem('@global_mock_offers', JSON.stringify(updatedGlobal));
+
+          Alert.alert('Başarılı', 'Teklifiniz veritabanına kaydedildi ve malike iletildi.');
+        } catch (writeErr) {
+          console.warn("Bid save to Firestore timed out or failed, saving locally:", writeErr);
+          
+          newBid.id = 'bid_local_' + Math.random().toString(36).substring(7);
+          const filteredBids = myBids.filter(b => b.submissionId !== selectedRequestForBid.id);
+          const updatedBids = [newBid, ...filteredBids];
+          setMyBids(updatedBids);
+          await AsyncStorage.setItem('@contractor_bids_' + user.uid, JSON.stringify(updatedBids));
+
+          // Save to global mock offers as fallback for citizen
+          const globalOffersStr = await AsyncStorage.getItem('@global_mock_offers');
+          const globalOffers = globalOffersStr ? JSON.parse(globalOffersStr) : [];
+          const filteredGlobal = globalOffers.filter(b => !(b.submissionId === selectedRequestForBid.id && b.contractorId === user.uid));
+          const updatedGlobal = [newBid, ...filteredGlobal];
+          await AsyncStorage.setItem('@global_mock_offers', JSON.stringify(updatedGlobal));
+
+          Alert.alert('Yerel Kayıt Yapıldı', 'Veritabanı bağlantısı kurulamadığı için teklif yerel belleğe kaydedildi.');
+        }
+      }
+      setBidModalOpen(false);
+      setSelectedRequestForBid(null);
+      setBidNotes('');
+    } catch (e) {
+      console.error("Error sending bid:", e);
+      Alert.alert('Hata', 'Teklif iletilirken bir hata oluştu.');
+    } finally {
+      setSubmittingBid(false);
+    }
+  };
+
+  const handleToggleLike = async (project) => {
+    const isLiked = !project.likedByMe;
+    const newLikes = isLiked ? project.likes + 1 : Math.max(0, project.likes - 1);
+    
+    const updatedProjects = contractorProjects.map(p => {
+      if (p.id === project.id) {
+        return { ...p, likedByMe: isLiked, likes: newLikes };
+      }
+      return p;
+    });
+    setContractorProjects(updatedProjects);
+    
+    if (selectedProject && selectedProject.id === project.id) {
+      setSelectedProject(prev => ({ ...prev, likedByMe: isLiked, likes: newLikes }));
+    }
+
+    try {
+      if (isMock) {
+        await AsyncStorage.setItem('@contractor_projects', JSON.stringify(updatedProjects));
+      } else {
+        await AsyncStorage.setItem('@contractor_projects_' + user.uid, JSON.stringify(updatedProjects));
+        if (project.id && !project.id.startsWith('demo_proj_')) {
+          const docRef = doc(db, 'contractor_projects', project.id);
+          await updateDoc(docRef, {
+            likes: newLikes
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Error toggling like:", e);
+    }
+  };
+
   const renderAuthForm = () => (
-    <View style={globalStyles.glassCard}>
+    <View style={styles.authCard}>
       <View style={styles.headerBox}>
         <View style={styles.iconWrapper}>
-          <Briefcase size={24} color={COLORS.secondary} />
+          <Briefcase size={24} color={PORTAL_COLORS.accent} />
         </View>
-        <Text style={[styles.stepTitle, { color: COLORS.secondary }]}>B2B MÜTEAHHİT PORTALI</Text>
+        <Text style={[styles.stepTitle, { color: PORTAL_COLORS.accent }]}>B2B MÜTEAHHİT PORTALI</Text>
       </View>
 
-      <Text style={globalStyles.title}>{isRegister ? 'Kayıt Ol' : 'Müteahhit Girişi'}</Text>
-      <Text style={globalStyles.subtitle}>
+      <Text style={styles.authTitle}>{isRegister ? 'Kayıt Ol' : 'Müteahhit Girişi'}</Text>
+      <Text style={styles.authSubtitle}>
         {isRegister ? 'Kent360 ağındaki projelere teklif vermek için firma hesabınızı oluşturun.' : 'Firma hesabınız ile giriş yaparak aktif kentsel dönüşüm taleplerini listeleyin.'}
       </Text>
 
       {isRegister && (
         <>
-          <Text style={globalStyles.label}>Firma / Şirket Adı</Text>
+          <Text style={styles.authLabel}>Firma / Şirket Adı</Text>
           <TextInput
-            style={globalStyles.input}
+            style={styles.authInput}
             placeholder="İnşaat Ltd. Şti."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#64748B"
             value={companyName}
             onChangeText={setCompanyName}
           />
         </>
       )}
 
-      <Text style={globalStyles.label}>E-Posta Adresi</Text>
+      <Text style={styles.authLabel}>E-Posta Adresi</Text>
       <TextInput
-        style={globalStyles.input}
+        style={styles.authInput}
         keyboardType="email-address"
         autoCapitalize="none"
         placeholder="firma@ornek.com"
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor="#64748B"
         value={email}
         onChangeText={setEmail}
       />
 
-      <Text style={globalStyles.label}>Parola</Text>
+      <Text style={styles.authLabel}>Parola</Text>
       <TextInput
-        style={globalStyles.input}
+        style={styles.authInput}
         secureTextEntry={true}
         placeholder="******"
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor="#64748B"
         value={password}
         onChangeText={setPassword}
       />
@@ -319,7 +1089,7 @@ export default function ContractorPortal({ onBack }) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color={COLORS.white} size="small" />
+          <ActivityIndicator color={PORTAL_COLORS.bg} size="small" />
         ) : (
           <Text style={styles.authBtnText}>{isRegister ? 'Hesap Oluştur' : 'Giriş Yap'}</Text>
         )}
@@ -470,7 +1240,7 @@ export default function ContractorPortal({ onBack }) {
       </View>
 
       {loadingRequests ? (
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={PORTAL_COLORS.accent} style={{ marginTop: 40 }} />
       ) : (
         <View style={styles.requestList}>
           {requests.map((item) => {
@@ -494,7 +1264,7 @@ export default function ContractorPortal({ onBack }) {
               >
                 <View style={styles.reqCardHeader}>
                   <View style={styles.reqBadge}>
-                    <MapPin size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
+                    <MapPin size={12} color={PORTAL_COLORS.accent} style={{ marginRight: 4 }} />
                     <Text style={styles.reqBadgeText}>{item.city} / {item.district}</Text>
                   </View>
                   <Text style={styles.reqDate}>
@@ -577,24 +1347,73 @@ export default function ContractorPortal({ onBack }) {
                       )}
                     </View>
 
-                    {item.coordinates && (
-                      <TouchableOpacity
-                        style={styles.showMapBtn}
-                        onPress={() => handleShowRequestOnMap(item)}
-                      >
-                        <MapPin size={16} color="#0F172A" style={{ marginRight: 6 }} />
-                        <Text style={styles.showMapBtnText}>Teklif Konumunu Haritada Göster</Text>
-                      </TouchableOpacity>
-                    )}
+                    {/* Teklif Durumu ve Teklif Ver Butonu */}
+                    <View style={styles.divider} />
+                    {(() => {
+                      const existingBid = myBids.find(b => b.submissionId === item.id);
+                      return (
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          {item.coordinates && (
+                            <TouchableOpacity
+                              style={[styles.showMapBtn, { flex: 1, marginTop: 0 }]}
+                              onPress={() => handleShowRequestOnMap(item)}
+                            >
+                              <MapPin size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                              <Text style={styles.showMapBtnText}>Haritada Göster</Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={[
+                              styles.showMapBtn,
+                              {
+                                flex: 1.2,
+                                marginTop: 0,
+                                backgroundColor: existingBid ? 'rgba(197, 168, 128, 0.15)' : PORTAL_COLORS.accent,
+                                borderWidth: existingBid ? 1 : 0,
+                                borderColor: PORTAL_COLORS.accent,
+                              }
+                            ]}
+                            onPress={() => {
+                              setSelectedRequestForBid(item);
+                              if (existingBid) {
+                                setBidShare(String(existingBid.contractorShare));
+                                setBidCostPerSqm(String(existingBid.costPerSqm));
+                                setBidNotes(existingBid.notes || '');
+                              } else {
+                                setBidShare('45');
+                                setBidCostPerSqm('32000');
+                                setBidNotes('');
+                              }
+                              setBidModalOpen(true);
+                            }}
+                          >
+                            <Briefcase size={16} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                            <Text style={[styles.showMapBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg }]}>
+                              {existingBid ? 'Teklifi Güncelle' : 'Teklif Ver'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })()}
                   </View>
                 )}
               </TouchableOpacity>
             );
           })}
           {requests.length === 0 && (
-            <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginTop: 40 }}>
-              Aktif dönüşüm talebi bulunamadı.
-            </Text>
+            <View style={styles.emptyRequestsContainer}>
+              <Building size={48} color="#64748B" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyRequestsText}>Aktif dönüşüm talebi bulunamadı.</Text>
+              <Text style={styles.emptyRequestsSub}>Müteahhit portalını test etmek için örnek talepleri yükleyebilirsiniz.</Text>
+              <TouchableOpacity 
+                style={styles.seedRequestsBtn}
+                onPress={handleSeedRequests}
+                activeOpacity={0.8}
+              >
+                <Building size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                <Text style={styles.seedRequestsBtnText}>Örnek Talepleri Yükle</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )}
@@ -644,7 +1463,7 @@ export default function ContractorPortal({ onBack }) {
                 }}
                 title={title}
                 description={description}
-                pinColor={isFocused ? "#EF4444" : "#F59E0B"}
+                pinColor={isFocused ? PORTAL_COLORS.danger : PORTAL_COLORS.accent}
                 onPress={() => handleMarkerPress(req)}
               />
             );
@@ -697,7 +1516,7 @@ export default function ContractorPortal({ onBack }) {
             <View style={styles.mapBottomCard}>
               <View style={styles.mapBottomCardHeader}>
                 <View style={styles.reqBadge}>
-                  <MapPin size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
+                  <MapPin size={12} color={PORTAL_COLORS.accent} style={{ marginRight: 4 }} />
                   <Text style={styles.reqBadgeText}>
                     {selectedMapRequest.city} / {selectedMapRequest.district}
                   </Text>
@@ -761,17 +1580,52 @@ export default function ContractorPortal({ onBack }) {
                 ) : null}
               </ScrollView>
 
-              {selectedMapRequest.phone && (
-                <TouchableOpacity
-                  style={styles.mapCardPhoneBtn}
-                  onPress={() => handleCallPhone(selectedMapRequest.phone)}
-                >
-                  <Phone size={14} color="#0F172A" style={{ marginRight: 6 }} />
-                  <Text style={styles.mapCardPhoneBtnText}>
-                    Maliki Ara: {selectedMapRequest.phone}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                {selectedMapRequest.phone && (
+                  <TouchableOpacity
+                    style={[styles.mapCardPhoneBtn, { flex: 1, marginTop: 0, backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.25)' }]}
+                    onPress={() => handleCallPhone(selectedMapRequest.phone)}
+                  >
+                    <Phone size={14} color="#10B981" style={{ marginRight: 6 }} />
+                    <Text style={[styles.mapCardPhoneBtnText, { color: '#10B981' }]}>Ara</Text>
+                  </TouchableOpacity>
+                )}
+                {(() => {
+                  const existingBid = myBids.find(b => b.submissionId === selectedMapRequest.id);
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.mapCardPhoneBtn,
+                        {
+                          flex: 1.2,
+                          marginTop: 0,
+                          backgroundColor: existingBid ? 'rgba(197, 168, 128, 0.15)' : PORTAL_COLORS.accent,
+                          borderWidth: existingBid ? 1 : 0,
+                          borderColor: PORTAL_COLORS.accent,
+                        }
+                      ]}
+                      onPress={() => {
+                        setSelectedRequestForBid(selectedMapRequest);
+                        if (existingBid) {
+                          setBidShare(String(existingBid.contractorShare));
+                          setBidCostPerSqm(String(existingBid.costPerSqm));
+                          setBidNotes(existingBid.notes || '');
+                        } else {
+                          setBidShare('45');
+                          setBidCostPerSqm('32000');
+                          setBidNotes('');
+                        }
+                        setBidModalOpen(true);
+                      }}
+                    >
+                      <Briefcase size={14} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg} style={{ marginRight: 6 }} />
+                      <Text style={[styles.mapCardPhoneBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.bg }]}>
+                        {existingBid ? 'Güncelle' : 'Teklif'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+              </View>
             </View>
           );
         })()}
@@ -783,31 +1637,549 @@ export default function ContractorPortal({ onBack }) {
     <View style={styles.bottomNavbar}>
       <TouchableOpacity
         style={styles.navItem}
-        onPress={() => setActiveTab('list')}
+        onPress={() => {
+          setActiveTab('list');
+          setSelectedMapRequest(null);
+        }}
         activeOpacity={0.7}
       >
-        <Briefcase size={20} color={activeTab === 'list' ? '#F59E0B' : '#94A3B8'} />
+        <Briefcase size={20} color={activeTab === 'list' ? PORTAL_COLORS.accent : '#94A3B8'} />
         <Text style={[styles.navText, activeTab === 'list' && styles.navTextActive]}>Talepler</Text>
         {activeTab === 'list' && <View style={styles.activeIndicatorDot} />}
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.navItem}
-        onPress={() => setActiveTab('map')}
+        onPress={() => {
+          setActiveTab('map');
+          setSelectedMapRequest(null);
+        }}
         activeOpacity={0.7}
       >
-        <MapPin size={20} color={activeTab === 'map' ? '#F59E0B' : '#94A3B8'} />
+        <MapPin size={20} color={activeTab === 'map' ? PORTAL_COLORS.accent : '#94A3B8'} />
         <Text style={[styles.navText, activeTab === 'map' && styles.navTextActive]}>Harita</Text>
         {activeTab === 'map' && <View style={styles.activeIndicatorDot} />}
       </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => {
+          setActiveTab('profile');
+          setSelectedMapRequest(null);
+        }}
+        activeOpacity={0.7}
+      >
+        <User size={20} color={activeTab === 'profile' ? PORTAL_COLORS.accent : '#94A3B8'} />
+        <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>Profil</Text>
+        {activeTab === 'profile' && <View style={styles.activeIndicatorDot} />}
+      </TouchableOpacity>
     </View>
   );
+
+  const renderProfileView = () => {
+    const totalLikes = contractorProjects.reduce((sum, p) => sum + (p.likes || 0), 0);
+    
+    return (
+      <View style={{ flex: 1, backgroundColor: PORTAL_COLORS.bg }}>
+        <ScrollView contentContainerStyle={[globalStyles.scrollContainer, { paddingTop: 16, paddingBottom: 100 }]}>
+          {/* Company header card */}
+          <View style={styles.profileHeaderCard}>
+            <View style={styles.profileAvatarRow}>
+              <View style={styles.avatarContainer}>
+                {editCompanyName ? (
+                  <Text style={styles.avatarText}>
+                    {editCompanyName.substring(0, 2).toUpperCase()}
+                  </Text>
+                ) : (
+                  <User size={32} color="#94A3B8" />
+                )}
+              </View>
+              <View style={styles.profileStatsRow}>
+                <View style={styles.profileStatItem}>
+                  <Text style={styles.profileStatNumber}>{requests.length}</Text>
+                  <Text style={styles.profileStatLabel}>Talepler</Text>
+                </View>
+                <View style={styles.profileStatItem}>
+                  <Text style={styles.profileStatNumber}>{contractorProjects.length}</Text>
+                  <Text style={styles.profileStatLabel}>Projeler</Text>
+                </View>
+                <View style={styles.profileStatItem}>
+                  <Text style={styles.profileStatNumber}>{totalLikes}</Text>
+                  <Text style={styles.profileStatLabel}>Beğeniler</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.profileNameBio}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.profileCompanyName}>{contractorInfo?.companyName || 'Yükleniyor...'}</Text>
+                {contractorInfo?.verified && (
+                  <View style={styles.verifiedBadge}>
+                    <Check size={10} color={PORTAL_COLORS.bg} />
+                  </View>
+                )}
+              </View>
+              <Text style={styles.profileEmail}>{contractorInfo?.email}</Text>
+              
+              {contractorInfo?.phone ? (
+                <Text style={styles.profileInfoText}><Phone size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.phone}</Text>
+              ) : null}
+              {contractorInfo?.address ? (
+                <Text style={styles.profileInfoText}><MapPin size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.address}</Text>
+              ) : null}
+              {contractorInfo?.website ? (
+                <Text style={styles.profileInfoText}><Globe size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.website}</Text>
+              ) : null}
+            </View>
+
+            <TouchableOpacity 
+              style={styles.editProfileBtn}
+              onPress={() => setShowEditForm(prev => !prev)}
+            >
+              <Text style={styles.editProfileBtnText}>
+                {showEditForm ? 'Düzenlemeyi Kapat' : 'Profili Düzenle'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Edit Profile Form */}
+          {showEditForm && (
+            <View style={[styles.profileHeaderCard, { marginTop: 12 }]}>
+              <Text style={[styles.expandedSectionTitle, { color: PORTAL_COLORS.accent }]}>Profili Düzenle</Text>
+              
+              <Text style={styles.editFormLabel}>Firma Adı</Text>
+              <TextInput 
+                style={styles.profileInput}
+                value={editCompanyName}
+                onChangeText={setEditCompanyName}
+                placeholder="Firma Adı"
+                placeholderTextColor="#64748B"
+              />
+
+              <Text style={styles.editFormLabel}>Telefon Numarası</Text>
+              <TextInput 
+                style={styles.profileInput}
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="Örn: 0532 123 4567"
+                placeholderTextColor="#64748B"
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.editFormLabel}>Adres</Text>
+              <TextInput 
+                style={[styles.profileInput, { height: 80, textAlignVertical: 'top' }]}
+                value={editAddress}
+                onChangeText={setEditAddress}
+                placeholder="Firma Adresi"
+                placeholderTextColor="#64748B"
+                multiline
+              />
+
+              <Text style={styles.editFormLabel}>Web Sitesi</Text>
+              <TextInput 
+                style={styles.profileInput}
+                value={editWebsite}
+                onChangeText={setEditWebsite}
+                placeholder="Örn: www.fetsangrup.com"
+                placeholderTextColor="#64748B"
+                autoCapitalize="none"
+              />
+
+              <TouchableOpacity 
+                style={styles.saveProfileBtn}
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? (
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                ) : (
+                  <Text style={styles.saveProfileBtnText}>Kaydet</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Portfolio Grid Header */}
+          <View style={styles.portfolioGridHeader}>
+            <Text style={styles.portfolioTitle}>Portfolyo Projeleri</Text>
+            <TouchableOpacity 
+              style={styles.addProjectBtn}
+              onPress={() => setAddProjectModalOpen(true)}
+            >
+              <Plus size={16} color={PORTAL_COLORS.bg} style={{ marginRight: 4 }} />
+              <Text style={styles.addProjectBtnText}>Proje Ekle</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Empty portfolio statement */}
+          {contractorProjects.length === 0 && (
+            <View style={styles.emptyPortfolioCard}>
+              <Camera size={32} color="#64748B" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyPortfolioText}>Henüz hiç proje eklemediniz.</Text>
+              <Text style={styles.emptyPortfolioSub}>
+                İlk kentsel dönüşüm projenizi eklemek için yukarıdaki "Proje Ekle" butonuna basın.
+              </Text>
+            </View>
+          )}
+
+          {/* Grid Render */}
+          {contractorProjects.length > 0 && renderProjectGrid()}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderProjectGrid = () => {
+    const rows = [];
+    for (let i = 0; i < contractorProjects.length; i += 3) {
+      rows.push(contractorProjects.slice(i, i + 3));
+    }
+    
+    return (
+      <View style={styles.gridContainer}>
+        {rows.map((row, rIdx) => (
+          <View key={rIdx} style={styles.gridRow}>
+            {row.map((proj) => (
+              <TouchableOpacity
+                key={proj.id}
+                style={styles.gridThumbnail}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedProject(proj);
+                  setActiveDetailImageIdx(0);
+                }}
+              >
+                <Image source={{ uri: proj.images?.[0] }} style={styles.thumbnailImage} />
+                {proj.images?.length > 1 && (
+                  <View style={styles.multipleImagesBadge}>
+                    <Layers size={10} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+            {row.length < 3 && Array.from({ length: 3 - row.length }).map((_, i) => (
+              <View key={`empty_${i}`} style={[styles.gridThumbnail, { backgroundColor: 'transparent', borderWidth: 0 }]} />
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderProjectDetailModal = () => {
+    if (!selectedProject) return null;
+    return (
+      <Modal
+        visible={!!selectedProject}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedProject(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setSelectedProject(null)}
+          />
+          <View style={styles.projectDetailModalCard}>
+            <View style={styles.projectModalHeader}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.projectModalTitle} numberOfLines={1}>{selectedProject.title}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <MapPin size={10} color={PORTAL_COLORS.accent} style={{ marginRight: 4 }} />
+                  <Text style={styles.projectModalSub} numberOfLines={1}>{selectedProject.location} • {selectedProject.year}</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.closeProjectModalBtn}
+                onPress={() => setSelectedProject(null)}
+              >
+                <X size={20} color={PORTAL_COLORS.textTitle} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Carousel */}
+            <View style={styles.modalCarouselContainer}>
+              <FlatList
+                ref={carouselRef}
+                data={selectedProject.images}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(_, index) => index.toString()}
+                getItemLayout={(data, index) => ({
+                  length: width - 40,
+                  offset: (width - 40) * index,
+                  index
+                })}
+                onMomentumScrollEnd={(e) => {
+                  const contentOffset = e.nativeEvent.contentOffset.x;
+                  const viewSize = e.nativeEvent.layoutMeasurement.width;
+                  if (viewSize > 0) {
+                    const pageNum = Math.round(contentOffset / viewSize);
+                    setActiveDetailImageIdx(pageNum);
+                  }
+                }}
+                renderItem={({ item }) => (
+                  <Image 
+                    source={{ uri: item }} 
+                    style={{ width: width - 40, height: '100%' }} 
+                    resizeMode="cover"
+                  />
+                )}
+              />
+              {selectedProject.images.length > 1 && (
+                <View style={styles.carouselDotsContainer}>
+                  {selectedProject.images.map((_, dotIdx) => (
+                    <TouchableOpacity
+                      key={dotIdx}
+                      style={[
+                        styles.carouselDot,
+                        activeDetailImageIdx === dotIdx && styles.carouselDotActive
+                      ]}
+                      onPress={() => {
+                        setActiveDetailImageIdx(dotIdx);
+                        carouselRef.current?.scrollToIndex({ index: dotIdx, animated: true });
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Description and Likes */}
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity 
+                style={styles.likeBtnContainer}
+                onPress={() => handleToggleLike(selectedProject)}
+                activeOpacity={0.8}
+              >
+                <Heart 
+                  size={20} 
+                  color={selectedProject.likedByMe ? "#EF4444" : "#F1F5F9"} 
+                  fill={selectedProject.likedByMe ? "#EF4444" : "transparent"} 
+                />
+                <Text style={styles.likeBtnText}>{selectedProject.likes || 0} Beğeni</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.projectModalScroll} showsVerticalScrollIndicator={false}>
+              <Text style={styles.projectModalDescription}>
+                {selectedProject.description}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderAddProjectModal = () => {
+    return (
+      <Modal
+        visible={addProjectModalOpen}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setAddProjectModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setAddProjectModalOpen(false)}
+          />
+          <View style={[styles.projectDetailModalCard, { height: '80%', maxHeight: 600 }]}>
+            <View style={styles.projectModalHeader}>
+              <Text style={styles.projectModalTitle}>Yeni Proje Yayınla</Text>
+              <TouchableOpacity 
+                style={styles.closeProjectModalBtn}
+                onPress={() => setAddProjectModalOpen(false)}
+              >
+                <X size={20} color={PORTAL_COLORS.textTitle} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.addProjectScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {/* Image Picker Box */}
+              <Text style={styles.editFormLabel}>Proje Fotoğrafları (En fazla 5 adet)</Text>
+              <View style={styles.imagePickerRow}>
+                {newProjectImages.map((img, imgIdx) => (
+                  <View key={imgIdx} style={styles.pickedImageWrapper}>
+                    <Image source={{ uri: img }} style={styles.pickedImage} />
+                    <TouchableOpacity 
+                      style={styles.deletePickedImageBtn}
+                      onPress={() => setNewProjectImages(prev => prev.filter((_, idx) => idx !== imgIdx))}
+                    >
+                      <X size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                
+                {newProjectImages.length < 5 && (
+                  <TouchableOpacity 
+                    style={styles.pickImageBtn}
+                    onPress={handlePickImages}
+                    activeOpacity={0.8}
+                  >
+                    <Camera size={24} color="#94A3B8" />
+                    <Text style={styles.pickImageBtnText}>Görsel Ekle</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.editFormLabel}>Proje Başlığı</Text>
+              <TextInput
+                style={styles.profileInput}
+                value={newProjectTitle}
+                onChangeText={setNewProjectTitle}
+                placeholder="Örn: Fetsan Moda Apartmanı"
+                placeholderTextColor="#64748B"
+              />
+
+              <Text style={styles.editFormLabel}>Lokasyon</Text>
+              <TextInput
+                style={styles.profileInput}
+                value={newProjectLocation}
+                onChangeText={setNewProjectLocation}
+                placeholder="Örn: Kadıköy, İstanbul"
+                placeholderTextColor="#64748B"
+              />
+
+              <Text style={styles.editFormLabel}>Tamamlanma Yılı</Text>
+              <TextInput
+                style={styles.profileInput}
+                value={newProjectYear}
+                onChangeText={setNewProjectYear}
+                placeholder="Örn: 2024"
+                placeholderTextColor="#64748B"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.editFormLabel}>Proje Açıklaması</Text>
+              <TextInput
+                style={[styles.profileInput, { height: 100, textAlignVertical: 'top' }]}
+                value={newProjectDesc}
+                onChangeText={setNewProjectDesc}
+                placeholder="Projenin detayları, kentsel dönüşüm süreci ve teknik özelliklerini açıklayın..."
+                placeholderTextColor="#64748B"
+                multiline
+              />
+
+              <TouchableOpacity
+                style={styles.publishProjectBtn}
+                onPress={handleSaveProject}
+                disabled={savingProject}
+              >
+                {savingProject ? (
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                ) : (
+                  <Text style={styles.publishProjectBtnText}>Proje Yayınla</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderBidModal = () => {
+    if (!selectedRequestForBid) return null;
+    
+    // Check if contractor already bid on this request
+    const existingBid = myBids.find(b => b.submissionId === selectedRequestForBid.id);
+
+    return (
+      <Modal
+        visible={bidModalOpen}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setBidModalOpen(false);
+          setSelectedRequestForBid(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => {
+              setBidModalOpen(false);
+              setSelectedRequestForBid(null);
+            }}
+          />
+          <View style={[styles.projectDetailModalCard, { height: 'auto', maxHeight: 560 }]}>
+            <View style={styles.projectModalHeader}>
+              <Text style={styles.projectModalTitle}>
+                {existingBid ? 'Teklifi Güncelle' : 'Resmi Fizibilite Teklifi Ver'}
+              </Text>
+              <TouchableOpacity
+                style={styles.closeProjectModalBtn}
+                onPress={() => {
+                  setBidModalOpen(false);
+                  setSelectedRequestForBid(null);
+                }}
+              >
+                <X size={20} color={PORTAL_COLORS.textTitle} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.addProjectScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={styles.editFormLabel}>Müteahhit Payı Yüzdesi (%)</Text>
+              <TextInput
+                style={styles.profileInput}
+                value={bidShare}
+                onChangeText={setBidShare}
+                placeholder="Örn: 45"
+                placeholderTextColor="#64748B"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.editFormLabel}>Metrekare İnşaat Yapım Maliyeti (₺)</Text>
+              <TextInput
+                style={styles.profileInput}
+                value={bidCostPerSqm}
+                onChangeText={setBidCostPerSqm}
+                placeholder="Örn: 32000"
+                placeholderTextColor="#64748B"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.editFormLabel}>Teklif Notları ve Açıklama</Text>
+              <TextInput
+                style={[styles.profileInput, { height: 100, textAlignVertical: 'top' }]}
+                value={bidNotes}
+                onChangeText={setBidNotes}
+                placeholder="Arsa maliklerine iletilecek mesaj, firmanızın tecrübesi ve ek detaylar..."
+                placeholderTextColor="#64748B"
+                multiline
+              />
+
+              <TouchableOpacity
+                style={styles.publishProjectBtn}
+                onPress={handleSendBid}
+                disabled={submittingBid}
+              >
+                {submittingBid ? (
+                  <ActivityIndicator size="small" color={PORTAL_COLORS.bg} />
+                ) : (
+                  <Text style={styles.publishProjectBtnText}>
+                    {existingBid ? 'Teklifi Güncelle' : 'Teklifi Gönder'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
       style={[
         globalStyles.container,
         {
-          backgroundColor: user ? '#0B0F19' : COLORS.bgDark,
+          backgroundColor: PORTAL_COLORS.bg,
           paddingBottom: 0
         }
       ]}
@@ -825,13 +2197,13 @@ export default function ContractorPortal({ onBack }) {
         >
           {/* Geri Butonu */}
           <TouchableOpacity style={styles.backBtn} onPress={onBack} disabled={loading}>
-            <ArrowLeft size={20} color={COLORS.textLight} />
+            <ArrowLeft size={20} color={PORTAL_COLORS.accent} />
             <Text style={styles.backBtnText}>Ana Sayfa</Text>
           </TouchableOpacity>
           {renderAuthForm()}
         </ScrollView>
       ) : (
-        <View style={{ flex: 1, backgroundColor: '#0B0F19' }}>
+        <View style={{ flex: 1, backgroundColor: PORTAL_COLORS.bg }}>
           {/* Top Navigation / Header Bar (White bg stretches under notch) */}
           <View style={[
             styles.portalHeader,
@@ -841,7 +2213,7 @@ export default function ContractorPortal({ onBack }) {
             }
           ]}>
             <TouchableOpacity style={styles.headerBackBtn} onPress={onBack}>
-              <ArrowLeft size={20} color="#F1F5F9" />
+              <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
             <Text style={styles.portalHeaderTitle}>Müteahhit Portalı</Text>
             <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
@@ -853,12 +2225,17 @@ export default function ContractorPortal({ onBack }) {
             <ScrollView contentContainerStyle={[globalStyles.scrollContainer, { paddingTop: 16, paddingBottom: 100 }]}>
               {renderDashboard()}
             </ScrollView>
-          ) : (
+          ) : activeTab === 'map' ? (
             renderMapView()
+          ) : (
+            renderProfileView()
           )}
 
-          {/* Floating Bottom Navigation Bar */}
           {renderBottomNavbar()}
+
+          {renderProjectDetailModal()}
+          {renderAddProjectModal()}
+          {renderBidModal()}
         </View>
       )}
     </KeyboardAvoidingView>
@@ -872,10 +2249,57 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignSelf: 'flex-start',
   },
+  authCard: {
+    backgroundColor: PORTAL_COLORS.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    padding: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
+    marginBottom: 20,
+  },
+  authTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
+    color: PORTAL_COLORS.textTitle,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  authSubtitle: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: PORTAL_COLORS.textBody,
+    lineHeight: 20,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  authLabel: {
+    fontFamily: FONTS.medium,
+    fontSize: 13,
+    color: PORTAL_COLORS.accent,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  authInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: PORTAL_COLORS.textTitle,
+    fontFamily: FONTS.regular,
+    fontSize: 15,
+    marginBottom: 16,
+  },
   backBtnText: {
     fontFamily: FONTS.medium,
     fontSize: 15,
-    color: COLORS.textLight,
+    color: PORTAL_COLORS.accent,
     marginLeft: 8,
   },
   headerBox: {
@@ -888,7 +2312,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: PORTAL_COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -900,7 +2324,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   authBtn: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: PORTAL_COLORS.accent,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -911,7 +2335,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   authBtnText: {
-    color: COLORS.white,
+    color: PORTAL_COLORS.bg,
     fontFamily: FONTS.bold,
     fontSize: 16,
   },
@@ -922,32 +2346,32 @@ const styles = StyleSheet.create({
   switchBtnText: {
     fontFamily: FONTS.medium,
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: PORTAL_COLORS.textMuted,
   },
   dashHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: PORTAL_COLORS.border,
     paddingBottom: 16,
     marginBottom: 16,
   },
   dashWelcome: {
     fontFamily: FONTS.medium,
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: PORTAL_COLORS.textMuted,
   },
   dashEmail: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: COLORS.textLight,
+    color: PORTAL_COLORS.textTitle,
   },
   logoutBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    backgroundColor: PORTAL_COLORS.dangerBg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -961,20 +2385,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: FONTS.bold,
     fontSize: 14,
-    color: '#F59E0B', // Gold/Amber section title
+    color: PORTAL_COLORS.accent, // Champagne gold section title
   },
   refreshText: {
     fontFamily: FONTS.medium,
     fontSize: 13,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
   },
   requestList: {
     flex: 1,
   },
   requestCard: {
-    backgroundColor: '#1E293B', // Dark slate card
+    backgroundColor: PORTAL_COLORS.card, // Premium card bg
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: PORTAL_COLORS.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -993,7 +2417,7 @@ const styles = StyleSheet.create({
   reqBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(14, 165, 233, 0.15)', // Glass sky blue badge
+    backgroundColor: PORTAL_COLORS.accentBg, // Glass champagne gold badge
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1001,30 +2425,30 @@ const styles = StyleSheet.create({
   reqBadgeText: {
     fontFamily: FONTS.bold,
     fontSize: 11,
-    color: '#38BDF8',
+    color: PORTAL_COLORS.accent,
   },
   reqDate: {
     fontFamily: FONTS.regular,
     fontSize: 11,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
   },
   reqTitle: {
     fontFamily: FONTS.bold,
     fontSize: 14.5,
-    color: '#FFFFFF',
+    color: PORTAL_COLORS.textTitle,
     marginBottom: 10,
   },
   reqDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+    borderTopColor: PORTAL_COLORS.border,
     paddingTop: 10,
   },
   reqDetailText: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
   },
   glow: {
     position: 'absolute',
@@ -1033,8 +2457,8 @@ const styles = StyleSheet.create({
     width: width * 0.7,
     height: width * 0.7,
     borderRadius: width * 0.35,
-    backgroundColor: COLORS.secondary,
-    opacity: 0.05,
+    backgroundColor: PORTAL_COLORS.accent,
+    opacity: 0.03,
     blurRadius: 100,
   },
   portalHeader: {
@@ -1043,21 +2467,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#0B0F19', // Deep dark header bg
+    backgroundColor: PORTAL_COLORS.bg, // Obsidian dark header bg
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: PORTAL_COLORS.border,
   },
   portalHeaderTitle: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: '#FFFFFF', // White title text
+    color: PORTAL_COLORS.textTitle, // White title text
   },
   headerBackBtn: {
     padding: 6,
   },
   headerLogoutBtn: {
     padding: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)', // Premium dark red bg
+    backgroundColor: PORTAL_COLORS.dangerBg, // Premium dark red bg
     borderRadius: 8,
   },
   bottomNavbar: {
@@ -1066,10 +2490,10 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: 64,
-    backgroundColor: '#1E293B', // Dark slate floating pill bg
+    backgroundColor: PORTAL_COLORS.card, // Slate floating pill bg
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: PORTAL_COLORS.border,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -1089,18 +2513,18 @@ const styles = StyleSheet.create({
   navText: {
     fontFamily: FONTS.medium,
     fontSize: 11,
-    color: '#94A3B8',
+    color: PORTAL_COLORS.textBody,
     marginTop: 2,
   },
   navTextActive: {
-    color: '#F59E0B', // Gold/Amber selected text
+    color: PORTAL_COLORS.accent, // Selected champagne gold text
     fontFamily: FONTS.bold,
   },
   activeIndicatorDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#F59E0B',
+    backgroundColor: PORTAL_COLORS.accent,
     marginTop: 3,
   },
   mapContainer: {
@@ -1112,10 +2536,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     alignSelf: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: 'rgba(7, 10, 19, 0.85)',
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#F59E0B', // Gold border!
+    borderColor: PORTAL_COLORS.accent, // Gold border
     paddingHorizontal: 16,
     paddingVertical: 8,
     shadowColor: '#000000',
@@ -1133,12 +2557,12 @@ const styles = StyleSheet.create({
   expandedSection: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: PORTAL_COLORS.border,
     paddingTop: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: PORTAL_COLORS.border,
     marginVertical: 12,
   },
   expandedSectionTitle: {
@@ -1195,7 +2619,7 @@ const styles = StyleSheet.create({
     minWidth: 70,
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: PORTAL_COLORS.border,
     borderRadius: 8,
     padding: 8,
     alignItems: 'center',
@@ -1203,7 +2627,7 @@ const styles = StyleSheet.create({
   breakdownLabel: {
     fontFamily: FONTS.medium,
     fontSize: 10,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     marginBottom: 2,
   },
   breakdownVal: {
@@ -1212,7 +2636,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   showMapBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: PORTAL_COLORS.accent,
     borderRadius: 10,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -1221,7 +2645,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   showMapBtnText: {
-    color: '#0F172A',
+    color: PORTAL_COLORS.bg,
     fontFamily: FONTS.bold,
     fontSize: 12,
   },
@@ -1230,10 +2654,10 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 104 : 96,
     left: 20,
     right: 20,
-    backgroundColor: '#1E293B',
+    backgroundColor: PORTAL_COLORS.card,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: PORTAL_COLORS.border,
     padding: 16,
     maxHeight: 280,
     shadowColor: '#000000',
@@ -1265,7 +2689,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
     padding: 10,
   },
@@ -1276,7 +2700,7 @@ const styles = StyleSheet.create({
   mapStatLabel: {
     fontFamily: FONTS.medium,
     fontSize: 9.5,
-    color: '#64748B',
+    color: PORTAL_COLORS.textMuted,
     marginBottom: 2,
   },
   mapStatValue: {
@@ -1290,7 +2714,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   mapCardPhoneBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: PORTAL_COLORS.accent,
     borderRadius: 10,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -1299,7 +2723,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   mapCardPhoneBtnText: {
-    color: '#0F172A',
+    color: PORTAL_COLORS.bg,
     fontFamily: FONTS.bold,
     fontSize: 12,
   },
@@ -1315,9 +2739,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1E293B',
+    backgroundColor: PORTAL_COLORS.card,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: PORTAL_COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',
@@ -1326,4 +2750,422 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
   },
+  // Contractor Profile Styles
+  profileHeaderCard: {
+    backgroundColor: PORTAL_COLORS.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    padding: 20,
+    marginBottom: 12,
+  },
+  profileAvatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  avatarContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: PORTAL_COLORS.accentBg,
+    borderWidth: 1.5,
+    borderColor: PORTAL_COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
+    color: PORTAL_COLORS.accent,
+  },
+  profileStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    flex: 1,
+    marginLeft: 20,
+  },
+  profileStatItem: {
+    alignItems: 'center',
+  },
+  profileStatNumber: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  profileStatLabel: {
+    fontFamily: FONTS.medium,
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  profileNameBio: {
+    marginBottom: 16,
+  },
+  profileCompanyName: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginRight: 6,
+  },
+  verifiedBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileEmail: {
+    fontFamily: FONTS.regular,
+    fontSize: 12.5,
+    color: '#64748B',
+    marginBottom: 10,
+  },
+  profileInfoText: {
+    fontFamily: FONTS.medium,
+    fontSize: 12.5,
+    color: '#94A3B8',
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editProfileBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  editProfileBtnText: {
+    color: '#FFFFFF',
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+  },
+  profileInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    fontFamily: FONTS.regular,
+    fontSize: 14.5,
+    marginBottom: 14,
+  },
+  saveProfileBtn: {
+    backgroundColor: PORTAL_COLORS.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  saveProfileBtnText: {
+    color: PORTAL_COLORS.bg,
+    fontFamily: FONTS.bold,
+    fontSize: 14.5,
+  },
+  editFormLabel: {
+    fontFamily: FONTS.medium,
+    fontSize: 12,
+    color: PORTAL_COLORS.accent,
+    marginBottom: 6,
+  },
+  portfolioGridHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 18,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  portfolioTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  addProjectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PORTAL_COLORS.accent,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  addProjectBtnText: {
+    color: PORTAL_COLORS.bg,
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+  },
+  emptyPortfolioCard: {
+    backgroundColor: PORTAL_COLORS.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyPortfolioText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  emptyPortfolioSub: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  gridContainer: {
+    flexDirection: 'column',
+    gap: 3,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 3,
+  },
+  gridThumbnail: {
+    width: (width - 46) / 3,
+    aspectRatio: 1,
+    backgroundColor: PORTAL_COLORS.card,
+    borderRadius: 4,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  multipleImagesBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 4,
+    padding: 3,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(7, 10, 19, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  projectDetailModalCard: {
+    width: '100%',
+    backgroundColor: PORTAL_COLORS.card,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: PORTAL_COLORS.border,
+    overflow: 'hidden',
+    maxHeight: 520,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  projectModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+  },
+  projectModalTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 16.5,
+    color: '#FFFFFF',
+  },
+  projectModalSub: {
+    fontFamily: FONTS.medium,
+    fontSize: 11.5,
+    color: '#94A3B8',
+  },
+  closeProjectModalBtn: {
+    padding: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+  },
+  modalCarouselContainer: {
+    width: '100%',
+    aspectRatio: 1.5,
+    backgroundColor: '#03050a',
+    position: 'relative',
+  },
+  modalCarouselImage: {
+    width: '100%',
+    height: '100%',
+  },
+  carouselDotsContainer: {
+    position: 'absolute',
+    bottom: 12,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: 'rgba(7, 10, 19, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  carouselDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  carouselDotActive: {
+    backgroundColor: PORTAL_COLORS.accent,
+    width: 12,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+  },
+  likeBtnContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  likeBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  projectModalScroll: {
+    padding: 20,
+    maxHeight: 120,
+  },
+  projectModalDescription: {
+    fontFamily: FONTS.regular,
+    fontSize: 13.5,
+    color: '#E2E8F0',
+    lineHeight: 20,
+    paddingBottom: 20,
+  },
+  // Add Project Scroll
+  addProjectScroll: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  imagePickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  pickedImageWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+  },
+  pickedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  deletePickedImageBtn: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: PORTAL_COLORS.danger,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickImageBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: PORTAL_COLORS.border,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  },
+  pickImageBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 8.5,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  publishProjectBtn: {
+    backgroundColor: PORTAL_COLORS.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  publishProjectBtnText: {
+    color: PORTAL_COLORS.bg,
+    fontFamily: FONTS.bold,
+    fontSize: 14.5,
+  },
+  // Empty states for submissions
+  emptyRequestsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyRequestsText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginTop: 12,
+  },
+  emptyRequestsSub: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 20,
+  },
+  seedRequestsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PORTAL_COLORS.accent,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 20,
+    shadowColor: PORTAL_COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  seedRequestsBtnText: {
+    color: PORTAL_COLORS.bg,
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+  },
 });
+
