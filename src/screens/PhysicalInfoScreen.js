@@ -756,7 +756,45 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         >
           <View style={{ flex: 1, gap: 16 }}>
             
-            {/* 1. BİNA ÖNİZLEME KARTI */}
+            {/* 1. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
+            <View style={globalStyles.glassCard}>
+              <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
+              
+              <Text style={globalStyles.title}>
+                {STEPS[currentQuestionStep].title}
+              </Text>
+              <Text style={globalStyles.subtitle}>
+                {STEPS[currentQuestionStep].question}
+              </Text>
+
+              {/* Soru Seçenekleri / Girişleri */}
+              <View style={styles.controlsSection}>
+                {renderQuestionControls()}
+              </View>
+
+              {/* Onay Sorusu Banner'ı */}
+              {currentQuestionStep === 9 && (
+                <View style={styles.finalQuestionBox}>
+                  <Text style={styles.finalQuestionText}>
+                    Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
+                  </Text>
+                </View>
+              )}
+
+              {/* Devam Et / İleri Butonu */}
+              <TouchableOpacity 
+                style={styles.nextBtn} 
+                onPress={currentQuestionStep === 9 ? handleConfirmSave : handleNextSubStep}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.nextBtnText}>
+                  {currentQuestionStep === 9 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
+                </Text>
+                <ArrowRight size={20} color={COLORS.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* 2. BİNA ÖNİZLEME KARTI */}
             <View style={[globalStyles.glassCard, styles.previewGlassCard]}>
               <Text style={styles.previewCardTitle}>BİNA MODELİ ÖNİZLEME</Text>
               
@@ -870,49 +908,6 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               </View>
             </View>
 
-            {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
-            <View style={globalStyles.glassCard}>
-              <View style={styles.headerBox}>
-                <View style={styles.iconWrapper}>
-                  <Layers size={22} color={COLORS.primary} />
-                </View>
-                <Text style={styles.stepTitle}>AŞAMA 2: Bina Tasarımı</Text>
-              </View>
-              
-              <Text style={globalStyles.title}>
-                {STEPS[currentQuestionStep].title}
-              </Text>
-              <Text style={globalStyles.subtitle}>
-                {STEPS[currentQuestionStep].question}
-              </Text>
-
-              {/* Soru Seçenekleri / Girişleri */}
-              <View style={styles.controlsSection}>
-                {renderQuestionControls()}
-              </View>
-
-              {/* Onay Sorusu Banner'ı */}
-              {currentQuestionStep === 9 && (
-                <View style={styles.finalQuestionBox}>
-                  <Text style={styles.finalQuestionText}>
-                    Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
-                  </Text>
-                </View>
-              )}
-
-              {/* Devam Et / İleri Butonu */}
-              <TouchableOpacity 
-                style={styles.nextBtn} 
-                onPress={currentQuestionStep === 9 ? handleConfirmSave : handleNextSubStep}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.nextBtnText}>
-                  {currentQuestionStep === 9 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
-                </Text>
-                <ArrowRight size={20} color={COLORS.secondary} />
-              </TouchableOpacity>
-            </View>
-
           </View>
         </ScrollView>
       </View>
@@ -953,6 +948,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.primary,
     letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: 6,
     textTransform: 'uppercase',
   },
   previewGlassCard: {
@@ -1119,18 +1116,18 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: COLORS.bgMedium,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     borderRadius: 14,
     padding: 14,
     alignItems: 'flex-start',
   },
   optionButtonHalf: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: COLORS.bgMedium,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
@@ -1199,9 +1196,9 @@ const styles = StyleSheet.create({
   },
   optionButtonHalfSmall: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: COLORS.bgMedium,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
