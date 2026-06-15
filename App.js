@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { 
   useFonts, 
@@ -23,6 +23,9 @@ import OfferChoiceScreen from './src/screens/OfferChoiceScreen';
 import ContactScreen from './src/screens/ContactScreen';
 import ShareScreen from './src/screens/ShareScreen';
 import ContractorPortal from './src/screens/ContractorPortal';
+import { db, isMock } from './firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS } from './src/styles/theme';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -111,6 +114,51 @@ export default function App() {
     setStepHistory([0]);
   };
 
+  const handleTrackSubmission = async (trackId) => {
+    try {
+      let foundSubmission = null;
+
+      if (!isMock) {
+        try {
+          const docRef = doc(db, 'submissions', trackId);
+          const docSnap = await Promise.race([
+            getDoc(docRef),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ]);
+          if (docSnap.exists()) {
+            foundSubmission = { id: docSnap.id, ...docSnap.data() };
+          }
+        } catch (onlineErr) {
+          console.warn("Online tracking failed/timed out, trying local submissions:", onlineErr);
+        }
+      }
+
+      if (!foundSubmission) {
+        const localStr = await AsyncStorage.getItem('@local_submissions');
+        const localSubmissions = localStr ? JSON.parse(localStr) : [];
+        const found = localSubmissions.find(sub => sub.id === trackId);
+        if (found) {
+          foundSubmission = found;
+        }
+      }
+
+      if (foundSubmission) {
+        setDocId(foundSubmission.id);
+        setWizardData(foundSubmission);
+        setCurrentStep(12);
+        setStepHistory([0, 12]);
+        return true;
+      }
+
+      Alert.alert('Başvuru Bulunamadı', 'Girdiğiniz Referans ID ile eşleşen bir başvuru kaydı bulunamadı. Lütfen ID\'nizi kontrol ediniz.');
+      return false;
+    } catch (error) {
+      console.error("Başvuru sorgulama hatası:", error);
+      Alert.alert('Hata', 'Sorgulama esnasında bir hata oluştu: ' + error.message);
+      return false;
+    }
+  };
+
   // İleri Yönlü Geçiş Akış Kuralları
   const handleNextTransition = () => {
     if (currentStep === 0) {
@@ -175,6 +223,7 @@ export default function App() {
           <WelcomeScreen 
             onNext={() => handleNextTransition()} 
             onGoToContractor={() => setShowContractorPortal(true)} 
+            onTrackRequest={handleTrackSubmission}
           />
         );
       case 1:
