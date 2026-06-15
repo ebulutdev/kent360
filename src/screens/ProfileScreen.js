@@ -196,28 +196,11 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       onNext();
     };
 
-    if (mutType === 'MÜT YOK') {
-      Alert.alert(
-        'Müteahhit Pay Durumu',
-        'Müteahhite paysız devam etmek istediğinizden emin misiniz?',
-        [
-          { text: 'Hayır', style: 'cancel' },
-          { text: 'Evet', onPress: proceed }
-        ],
-        { cancelable: false }
-      );
-    } else {
-      proceed();
-    }
+    proceed();
   };
 
   // Steps configuration
   const STEPS = useMemo(() => [
-    {
-      title: 'Hesaplama Tipi',
-      question: 'Projenizde müteahhit payı hesaplama modelini seçiniz.',
-      key: 'mutType'
-    },
     {
       title: 'Bina Genişliği (En)',
       question: 'Binanızın yatay genişliği (en) kaç metredir?',
@@ -253,6 +236,11 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       direction: 'right'
     },
     {
+      title: 'Hesaplama Tipi',
+      question: 'Projenizde müteahhit payı hesaplama modelini seçiniz.',
+      key: 'mutType'
+    },
+    {
       title: 'Onay ve Kontrol',
       question: 'Oluşturduğunuz parsel ve cephe modeli aşağıdaki gibidir. Onaylıyor musunuz?',
       key: 'confirmation'
@@ -263,7 +251,19 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     triggerHaptic();
     const next = currentQuestionStep + 1;
     if (next < STEPS.length) {
-      setCurrentQuestionStep(next);
+      if (STEPS[currentQuestionStep].key === 'mutType' && mutType === 'MÜT YOK') {
+        Alert.alert(
+          'Müteahhit Pay Durumu',
+          'Müteahhite pay vermiyorsunuz, emin misiniz?',
+          [
+            { text: 'Hayır', style: 'cancel' },
+            { text: 'Evet', onPress: () => setCurrentQuestionStep(next) }
+          ],
+          { cancelable: false }
+        );
+      } else {
+        setCurrentQuestionStep(next);
+      }
     }
   };
 
@@ -279,7 +279,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
 
   const handleCenterBoxPress = () => {
     triggerHaptic();
-    setCurrentQuestionStep(1); // Jump to width step
+    setCurrentQuestionStep(0); // Jump to width step
   };
 
   // Helper renderers for blueprint styling

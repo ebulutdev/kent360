@@ -89,12 +89,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const [hasAttic, setAttic] = useState(false);
   const [normalFloorCount, setNormalFloorCount] = useState(3);
   const [flatsPerFloor, setFlatsPerFloor] = useState({ 1: 2, 2: 2, 3: 2 });
-  const [hasGroundShop, setHasGroundShop] = useState(true);
   const [groundUnitCount, setGroundUnitCount] = useState(2);
+  const [groundUnitTypes, setGroundUnitTypes] = useState({});
   const [basementCount, setBasementCount] = useState(0);
-  const [basementUnitType, setBasementUnitType] = useState('depo'); // 'depo', 'siginak'
-  const [basementUnitCount, setBasementUnitCount] = useState(1);
-  const [averageSqm, setAverageSqm] = useState(120);
+  const [basementTypes, setBasementTypes] = useState({});
+  const [basementUnitCounts, setBasementUnitCounts] = useState({});
+  const defaultSqm = data.width && data.depth ? Math.round(data.width * data.depth) : 120;
+  const [averageSqm, setAverageSqm] = useState(defaultSqm);
 
   // Restore state from previously saved data on mount
   useEffect(() => {
@@ -134,9 +135,11 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       // Ground floor
       const groundFloor = floors.find(f => f.type === 'ground');
       if (groundFloor) {
-        const firstUnit = groundFloor.units?.[0];
-        const isShop = firstUnit ? getUnitDetails(firstUnit).type === 'dukkan' : true;
-        setHasGroundShop(isShop);
+        const uTypes = {};
+        groundFloor.units?.forEach((u, uIdx) => {
+          uTypes[uIdx + 1] = getUnitDetails(u).type;
+        });
+        setGroundUnitTypes(uTypes);
         setGroundUnitCount(groundFloor.units?.length || 2);
       }
 
@@ -144,12 +147,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       const basementFloors = floors.filter(f => f.type === 'basement');
       if (basementFloors.length > 0) {
         setBasementCount(basementFloors.length);
-        const firstBasement = basementFloors[0];
-        const firstUnit = firstBasement.units?.[0];
-        if (firstUnit) {
-          setBasementUnitType(getUnitDetails(firstUnit).type);
-        }
-        setBasementUnitCount(firstBasement.units?.length || 1);
+        const bTypes = {};
+        const bCounts = {};
+        basementFloors.forEach(f => {
+          const match = f.key.match(/basement_(\d+)/);
+          if (match) {
+            const idx = parseInt(match[1], 10);
+            const firstUnit = f.units?.[0];
+            bTypes[idx] = firstUnit ? getUnitDetails(firstUnit).type : 'depo';
+            bCounts[idx] = f.units?.length || 1;
+          }
+        });
+        setBasementTypes(bTypes);
+        setBasementUnitCounts(bCounts);
       } else {
         setBasementCount(0);
       }
@@ -170,6 +180,47 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       return changed ? updated : prev;
     });
   }, [normalFloorCount]);
+
+  // Sync groundUnitTypes dynamically with groundUnitCount
+  useEffect(() => {
+    setGroundUnitTypes(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      for (let i = 1; i <= groundUnitCount; i++) {
+        if (updated[i] === undefined) {
+          updated[i] = 'dukkan'; // default to dukkan
+          changed = true;
+        }
+      }
+      return changed ? updated : prev;
+    });
+  }, [groundUnitCount]);
+
+  // Sync basementTypes & basementUnitCounts dynamically with basementCount
+  useEffect(() => {
+    setBasementTypes(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      for (let i = 1; i <= basementCount; i++) {
+        if (updated[i] === undefined) {
+          updated[i] = 'depo'; // default to depo
+          changed = true;
+        }
+      }
+      return changed ? updated : prev;
+    });
+    setBasementUnitCounts(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      for (let i = 1; i <= basementCount; i++) {
+        if (updated[i] === undefined) {
+          updated[i] = 1; // default to 1 unit
+          changed = true;
+        }
+      }
+      return changed ? updated : prev;
+    });
+  }, [basementCount]);
 
   // Compute dynamic floors representation for building preview
   const computedBlockData = useMemo(() => {
@@ -198,12 +249,12 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
     // 2. Ground Floor
     const groundUnits = [];
-    const groundType = hasGroundShop ? 'dukkan' : 'daire';
     for (let u = 0; u < groundUnitCount; u++) {
+      const uType = groundUnitTypes[u + 1] || 'dukkan';
       groundUnits.push({
         id: `ground_${u}`,
-        type: groundType,
-        name: groundType === 'dukkan' ? 'Dükkan' : 'Daire'
+        type: uType,
+        name: uType === 'dukkan' ? 'Dükkan' : 'Daire'
       });
     }
     floors.push({
@@ -216,11 +267,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     // 3. Basement Floors
     for (let i = 1; i <= basementCount; i++) {
       const basementUnits = [];
-      for (let u = 0; u < basementUnitCount; u++) {
+      const bType = basementTypes[i] || 'depo';
+      const bUnitCount = basementUnitCounts[i] || 1;
+      for (let u = 0; u < bUnitCount; u++) {
         basementUnits.push({
           id: `basement_${i}_${u}`,
-          type: basementUnitType,
-          name: basementUnitType === 'depo' ? 'Depo' : 'Sığınak'
+          type: bType,
+          name: bType === 'depo' ? 'Depo' : 'Sığınak'
         });
       }
       floors.push({
@@ -241,11 +294,11 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     hasAttic,
     normalFloorCount,
     flatsPerFloor,
-    hasGroundShop,
     groundUnitCount,
+    groundUnitTypes,
     basementCount,
-    basementUnitType,
-    basementUnitCount,
+    basementTypes,
+    basementUnitCounts,
     averageSqm
   ]);
 
@@ -269,66 +322,70 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       });
     }
 
-    steps.push(
-      {
-        title: 'Zemin Kullanımı',
-        question: 'Binanızın zemin katında dükkan/mağaza var mı?',
-        key: 'hasGroundShop'
-      },
-      {
-        title: 'Zemin Birim Sayısı',
-        question: 'Zemin katta toplam kaç adet dükkan/daire bulunmaktadır?',
-        key: 'groundUnitCount'
-      },
-      {
-        title: 'Bodrum Kat',
-        question: 'Binanızda bodrum kat bulunuyor mu? Varsa kaç adet?',
-        key: 'basementCount'
-      },
-      {
-        title: 'Bodrum Kullanımı',
-        question: 'Bodrum kat(lar)da yer alan birimlerin tipi nedir ve kaç adettir?',
-        key: 'basementUsage'
-      },
-      {
-        title: 'Daire Büyüklüğü',
-        question: 'Binadaki dairelerin ortalama brüt alanı kaç m²\'dir?',
-        key: 'averageSqm'
-      },
-      {
-        title: 'Çatı Tipi',
-        question: 'Binanızın üst kısmındaki çatı yapısı nasıldır?',
-        key: 'roofType'
-      },
-      {
+    // Zemin Birim Sayısı
+    steps.push({
+      title: 'Zemin Birim Sayısı',
+      question: 'Zemin katta toplam kaç adet bağımsız birim bulunmaktadır?',
+      key: 'groundUnitCount'
+    });
+
+    // Dynamic ground unit type questions
+    for (let i = 1; i <= groundUnitCount; i++) {
+      steps.push({
+        title: `Zemin ${i}. Birim Tipi`,
+        question: `Zemin kattaki ${i}. bağımsız birimin kullanım amacı nedir?`,
+        key: `groundUnitType_${i}`,
+        groundUnitIndex: i
+      });
+    }
+
+    // Bodrum Kat sayısı
+    steps.push({
+      title: 'Bodrum Kat',
+      question: 'Binanızda bodrum kat bulunuyor mu? Varsa kaç adet?',
+      key: 'basementCount'
+    });
+
+    // Dynamic basement floor usage questions
+    for (let i = 1; i <= basementCount; i++) {
+      steps.push({
+        title: `${i}. Bodrum Kullanımı`,
+        question: `${i}. bodrum kattaki birimlerin tipi nedir ve kaç adettir?`,
+        key: `basementUsage_${i}`,
+        basementIndex: i
+      });
+    }
+
+    // Çatı Tipi
+    steps.push({
+      title: 'Çatı Tipi',
+      question: 'Binanızın üst kısmındaki çatı yapısı nasıldır?',
+      key: 'roofType'
+    });
+
+    // Çatı Piyesi (only if roofType is not none)
+    if (roofType !== 'none') {
+      steps.push({
         title: 'Çatı Piyesi',
         question: 'En üst katın çatı boşluğunda dubleks daire (çatı piyesi) var mı?',
         key: 'hasAttic'
-      },
-      {
-        title: 'Onay ve Kontrol',
-        question: 'Oluşturduğunuz bina modeli aşağıdaki gibidir. Onaylıyor musunuz?',
-        key: 'confirmation'
-      }
-    );
+      });
+    }
+
+    // Onay ve Kontrol
+    steps.push({
+      title: 'Onay ve Kontrol',
+      question: 'Oluşturduğunuz bina modeli aşağıdaki gibidir. Onaylıyor musunuz?',
+      key: 'confirmation'
+    });
 
     return steps;
-  }, [normalFloorCount, hasGroundShop]);
+  }, [normalFloorCount, groundUnitCount, basementCount, roofType]);
 
   // Navigation handlers for sub-steps
   const handleNextSubStep = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    let next = currentQuestionStep + 1;
-
-    // Skip basementUsage if basementCount is 0
-    if (next < STEPS.length && STEPS[next].key === 'basementUsage' && basementCount === 0) {
-      next = next + 1;
-    }
-    // Skip hasAttic if roofType is 'none'
-    if (next < STEPS.length && STEPS[next].key === 'hasAttic' && roofType === 'none') {
-      next = next + 1;
-    }
-
+    const next = currentQuestionStep + 1;
     if (next < STEPS.length) {
       setCurrentQuestionStep(next);
     }
@@ -336,17 +393,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
   const handleBackSubStep = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    let prev = currentQuestionStep - 1;
-
-    // Skip hasAttic backwards if roofType is 'none'
-    if (prev >= 0 && STEPS[prev].key === 'hasAttic' && roofType === 'none') {
-      prev = prev - 1;
-    }
-    // Skip basementUsage backwards if basementCount is 0
-    if (prev >= 0 && STEPS[prev].key === 'basementUsage' && basementCount === 0) {
-      prev = prev - 1;
-    }
-
+    const prev = currentQuestionStep - 1;
     if (prev >= 0) {
       setCurrentQuestionStep(prev);
     } else {
@@ -571,6 +618,108 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       );
     }
 
+    if (activeStep.groundUnitIndex !== undefined) {
+      const gIdx = activeStep.groundUnitIndex;
+      const val = groundUnitTypes[gIdx] || 'dukkan';
+      return (
+        <View style={styles.optionsRow}>
+          {[
+            { value: 'dukkan', label: 'Dükkan', desc: 'Ticari dükkan/mağaza' },
+            { value: 'daire', label: 'Konut / Daire', desc: 'Konut giriş / daire' }
+          ].map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.optionButtonHalf,
+                val === opt.value && styles.optionButtonActive
+              ]}
+              onPress={() => {
+                setGroundUnitTypes(prev => ({
+                  ...prev,
+                  [gIdx]: opt.value
+                }));
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.optionButtonText,
+                val === opt.value && styles.optionButtonTextActive
+              ]}>
+                {opt.label}
+              </Text>
+              <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+
+    if (activeStep.basementIndex !== undefined) {
+      const bIdx = activeStep.basementIndex;
+      const bType = basementTypes[bIdx] || 'depo';
+      const bUnitCount = basementUnitCounts[bIdx] || 1;
+      return (
+        <View style={styles.basementStepContainer}>
+          <Text style={styles.subQuestionLabel}>{bIdx}. Bodrum Birim Tipi:</Text>
+          <View style={styles.optionsRowSmall}>
+            {[
+              { type: 'depo', label: 'Depo / Kömürlük' },
+              { type: 'siginak', label: 'Ortak Sığınak' }
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.type}
+                style={[
+                  styles.optionButtonHalfSmall,
+                  bType === opt.type && styles.optionButtonActive
+                ]}
+                onPress={() => {
+                  setBasementTypes(prev => ({
+                    ...prev,
+                    [bIdx]: opt.type
+                  }));
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.optionButtonTextSmall,
+                  bType === opt.type && styles.optionButtonTextActive
+                ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[styles.subQuestionLabel, { marginTop: 12 }]}>{bIdx}. Bodrum Birim Sayısı:</Text>
+          <View style={styles.counterControlsSmall}>
+            <TouchableOpacity
+              style={styles.counterBtnSmall}
+              onPress={() => {
+                setBasementUnitCounts(prev => ({
+                  ...prev,
+                  [bIdx]: Math.max(1, (prev[bIdx] || 1) - 1)
+                }));
+              }}
+            >
+              <Minus size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.counterValueSmall}>{bUnitCount}</Text>
+            <TouchableOpacity
+              style={styles.counterBtnSmall}
+              onPress={() => {
+                setBasementUnitCounts(prev => ({
+                  ...prev,
+                  [bIdx]: Math.min(5, (prev[bIdx] || 1) + 1)
+                }));
+              }}
+            >
+              <Plus size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
     switch (activeStep.key) {
       case 'normalFloorCount':
         return (
@@ -594,38 +743,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 'hasGroundShop':
-        return (
-          <View style={styles.optionsRow}>
-            {[
-              { value: true, label: 'Evet, Dükkan Var', desc: 'Ticari dükkan/mağaza' },
-              { value: false, label: 'Hayır, Sadece Daire', desc: 'Konut / Daire giriş' }
-            ].map(opt => (
-              <TouchableOpacity
-                key={opt.value.toString()}
-                style={[
-                  styles.optionButtonHalf,
-                  hasGroundShop === opt.value && styles.optionButtonActive
-                ]}
-                onPress={() => setHasGroundShop(opt.value)}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.optionButtonText,
-                  hasGroundShop === opt.value && styles.optionButtonTextActive
-                ]}>
-                  {opt.label}
-                </Text>
-                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        );
-
       case 'groundUnitCount':
         return (
           <View style={styles.counterWrapper}>
-            <Text style={styles.counterSubLabel}>{hasGroundShop ? 'DÜKKAN SAYISI' : 'DAİRE SAYISI'}</Text>
+            <Text style={styles.counterSubLabel}>ZEMİN BİRİM SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -659,75 +780,6 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.min(5, prev + 1))}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-
-      case 'basementUsage':
-        return (
-          <View style={styles.basementStepContainer}>
-            <Text style={styles.subQuestionLabel}>Bodrum Birim Tipi:</Text>
-            <View style={styles.optionsRowSmall}>
-              {[
-                { type: 'depo', label: 'Depo / Kömürlük' },
-                { type: 'siginak', label: 'Ortak Sığınak' }
-              ].map(opt => (
-                <TouchableOpacity
-                  key={opt.type}
-                  style={[
-                    styles.optionButtonHalfSmall,
-                    basementUnitType === opt.type && styles.optionButtonActive
-                  ]}
-                  onPress={() => setBasementUnitType(opt.type)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[
-                    styles.optionButtonTextSmall,
-                    basementUnitType === opt.type && styles.optionButtonTextActive
-                  ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.subQuestionLabel, { marginTop: 12 }]}>Bodrum Kat Başına Birim Sayısı:</Text>
-            <View style={styles.counterControlsSmall}>
-              <TouchableOpacity
-                style={styles.counterBtnSmall}
-                onPress={() => setBasementUnitCount(prev => Math.max(1, prev - 1))}
-              >
-                <Minus size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.counterValueSmall}>{basementUnitCount}</Text>
-              <TouchableOpacity
-                style={styles.counterBtnSmall}
-                onPress={() => setBasementUnitCount(prev => Math.min(5, prev + 1))}
-              >
-                <Plus size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-
-      case 'averageSqm':
-        return (
-          <View style={styles.counterWrapper}>
-            <Text style={styles.counterSubLabel}>ORTALAMA DAİRE ALANI</Text>
-            <View style={styles.counterControls}>
-              <TouchableOpacity
-                style={styles.counterBtn}
-                onPress={() => setAverageSqm(prev => Math.max(40, prev - 10))}
-              >
-                <Minus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.counterValue}>{averageSqm} m²</Text>
-              <TouchableOpacity
-                style={styles.counterBtn}
-                onPress={() => setAverageSqm(prev => Math.min(300, prev + 10))}
               >
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -807,24 +859,32 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 <Text style={styles.summaryLabelText}>Normal Kat Sayısı:</Text>
                 <Text style={styles.summaryValueText}>{normalFloorCount} Kat</Text>
               </View>
-              <View style={styles.summaryItem}>
+              <View style={[styles.summaryItem, { flexDirection: 'column', alignItems: 'flex-start' }]}>
                 <Text style={styles.summaryLabelText}>Zemin Kat Yapısı:</Text>
-                <Text style={styles.summaryValueText}>
-                  {hasGroundShop ? `${groundUnitCount} Adet Ticari Dükkan` : `${groundUnitCount} Adet Daire`}
-                </Text>
+                {Array.from({ length: groundUnitCount }).map((_, idx) => {
+                  const type = groundUnitTypes[idx + 1] || 'dukkan';
+                  return (
+                    <Text key={idx} style={[styles.summaryValueText, { marginLeft: 8, marginTop: 2 }]}>
+                      • {idx + 1}. Bağımsız Birim: {type === 'dukkan' ? 'Dükkan' : 'Daire'}
+                    </Text>
+                  );
+                })}
               </View>
               {basementCount > 0 && (
-                <View style={styles.summaryItem}>
+                <View style={[styles.summaryItem, { flexDirection: 'column', alignItems: 'flex-start' }]}>
                   <Text style={styles.summaryLabelText}>Bodrum Katlar:</Text>
-                  <Text style={styles.summaryValueText}>
-                    {basementCount} Bodrum Kat (Kat başı {basementUnitCount} {basementUnitType === 'depo' ? 'Depo' : 'Sığınak'})
-                  </Text>
+                  {Array.from({ length: basementCount }).map((_, idx) => {
+                    const floorNum = idx + 1;
+                    const bType = basementTypes[floorNum] || 'depo';
+                    const bUnitCount = basementUnitCounts[floorNum] || 1;
+                    return (
+                      <Text key={idx} style={[styles.summaryValueText, { marginLeft: 8, marginTop: 2 }]}>
+                        • {floorNum}. Bodrum Kat: {bUnitCount} Adet {bType === 'depo' ? 'Depo' : 'Sığınak'}
+                      </Text>
+                    );
+                  })}
                 </View>
               )}
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabelText}>Ortalama Daire Alanı:</Text>
-                <Text style={styles.summaryValueText}>{averageSqm} m²</Text>
-              </View>
             </View>
           </ScrollView>
         );
