@@ -996,7 +996,21 @@ export default function ContractorPortal({ onBack }) {
       setBidNotes('');
     } catch (e) {
       console.error("Error sending bid:", e);
-      Alert.alert('Hata', 'Teklif iletilirken bir hata oluştu.');
+      let errorMsg = e.message || '';
+      let errorCode = e.code || '';
+      if (errorCode === 'permission-denied' || errorMsg.includes('permission-denied') || errorMsg.includes('insufficient permissions')) {
+        Alert.alert(
+          'Firebase Yetki Hatası',
+          'Firestore veritabanına teklif yazma yetkiniz yok.\n\nÇözüm: Firebase Konsolunuzda Cloud Firestore > Rules (Kurallar) sekmesinden okuma/yazma izinlerini herkese açık (veya test moduna) düzenleyiniz.'
+        );
+      } else if (errorCode === 'not-found' || errorMsg.includes('NOT_FOUND') || errorMsg.includes('database does not exist')) {
+        Alert.alert(
+          'Veritabanı Bulunamadı',
+          'Firebase projenizde Cloud Firestore veritabanı oluşturulmamış.\n\nÇözüm: Firebase Konsolunuzdan Cloud Firestore sekmesine girip \'Veritabanı Oluştur\' butonuna basınız.'
+        );
+      } else {
+        Alert.alert('Hata', 'Teklif iletilirken bir hata oluştu: ' + errorMsg);
+      }
     } finally {
       setSubmittingBid(false);
     }
