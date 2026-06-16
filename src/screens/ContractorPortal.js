@@ -1693,7 +1693,7 @@ export default function ContractorPortal({ onBack }) {
             const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
 
             if (isCluster) {
-              const clusterWidth = pointCount > 99 ? 76 : (pointCount > 9 ? 60 : 52);
+              const clusterWidth = pointCount > 99 ? 80 : (pointCount > 9 ? 64 : 56);
               const padHorizontal = pointCount > 9 ? 8 : 6;
               return (
                 <Marker
@@ -1725,16 +1725,13 @@ export default function ContractorPortal({ onBack }) {
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
                 onPress={() => handleMarkerPress(req)}
-                anchor={{ x: 0.5, y: 0.81 }}
               >
-                <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                <View style={{ width: 52, height: 52, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
                   <View style={[
-                    styles.singleMarkerPin,
-                    isFocused && styles.singleMarkerPinFocused
+                    styles.singleMarkerContainer,
+                    isFocused && styles.singleMarkerFocused
                   ]}>
-                    <View style={styles.singleMarkerIconWrapper}>
-                      <Building size={12} color={isFocused ? '#FFFFFF' : '#1E293B'} />
-                    </View>
+                    <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
                   </View>
                 </View>
               </Marker>
@@ -2844,33 +2841,24 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
-  singleMarkerPin: {
-    width: 28,
-    height: 28,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 0,
+  singleMarkerContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FDC010',
     borderWidth: 1.5,
     borderColor: '#1E293B',
-    transform: [{ rotate: '45deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
   },
-  singleMarkerPinFocused: {
+  singleMarkerFocused: {
     backgroundColor: '#EF4444',
     borderColor: '#FFFFFF',
-  },
-  singleMarkerIconWrapper: {
-    transform: [{ rotate: '-45deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   mapInfoOverlay: {
     position: 'absolute',
