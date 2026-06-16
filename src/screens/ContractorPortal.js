@@ -1699,12 +1699,11 @@ export default function ContractorPortal({ onBack }) {
                   key={`cluster_${clusterId}`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
+                  style={{ width: clusterWidth + 16, height: 48, justifyContent: 'center', alignItems: 'center' }}
                 >
-                  <View style={{ padding: 8, alignItems: 'center', justifyContent: 'center' }}>
-                    <View style={[styles.clusterMarkerContainer, { minWidth: clusterWidth }]}>
-                      <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
-                      <Text style={styles.clusterMarkerText}>{pointCount}</Text>
-                    </View>
+                  <View style={[styles.clusterMarkerContainer, { minWidth: clusterWidth }]}>
+                    <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
+                    <Text style={styles.clusterMarkerText}>{pointCount}</Text>
                   </View>
                 </Marker>
               );
@@ -1724,14 +1723,13 @@ export default function ContractorPortal({ onBack }) {
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
                 onPress={() => handleMarkerPress(req)}
+                style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}
               >
-                <View style={{ padding: 6 }}>
-                  <View style={[
-                    styles.singleMarkerContainer,
-                    isFocused && styles.singleMarkerFocused
-                  ]}>
-                    <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
-                  </View>
+                <View style={[
+                  styles.singleMarkerContainer,
+                  isFocused && styles.singleMarkerFocused
+                ]}>
+                  <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
                 </View>
               </Marker>
             );
