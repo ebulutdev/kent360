@@ -133,6 +133,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
   const [roofType, setRoofType] = useState('normal'); // 'normal', 'mansart', 'none'
   const [hasAttic, setAttic] = useState(false);
+  const [contractorFlatCount, setContractorFlatCount] = useState(0);
   const [normalFloorCount, setNormalFloorCount] = useState(3);
   const [flatsPerFloor, setFlatsPerFloor] = useState({ 1: 2, 2: 2, 3: 2 });
   const [groundUnitCount, setGroundUnitCount] = useState(2);
@@ -453,6 +454,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       });
     }
 
+    // Müteahhit Daire Sayısı
+    steps.push({
+      title: 'Müteahhit Payı',
+      question: 'Bu binada müteahhite verilecek (kalacak) toplam daire sayısı nedir?',
+      key: 'contractorFlatCount'
+    });
+
     // Onay ve Kontrol
     steps.push({
       title: 'Onay ve Kontrol',
@@ -505,6 +513,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       footprintSqm: footprintSqm,
       normalFloorSqm: normalFloorSqm,
       averageSqm: normalFloorSqm, // Geriye dönük uyumluluk için
+      contractorFlatCount: contractorFlatCount,
       floors: computedBlockData.floors
     };
 
@@ -1000,6 +1009,28 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
+      case 'contractorFlatCount':
+        return (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>MÜTEAHHİTE KALACAK DAİRE</Text>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setContractorFlatCount(prev => Math.max(0, prev - 1)); }}
+              >
+                <Minus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.counterValue}>{contractorFlatCount}</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setContractorFlatCount(prev => Math.min(100, prev + 1)); }}
+              >
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
       case 'confirmation':
         return (
           <ScrollView style={styles.summaryScroll} showsVerticalScrollIndicator={false}>
@@ -1010,6 +1041,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                   {roofType === 'none' ? 'Çatı Yok' : (roofType === 'mansart' ? 'Mansart Çatı' : 'Normal Çatı')}
                   {hasAttic && roofType !== 'none' ? ' (Çatı Piyesli/Dubleks)' : ''}
                 </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Müteahhit Payı:</Text>
+                <Text style={styles.summaryValueText}>{contractorFlatCount} Daire</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Normal Kat Sayısı:</Text>
