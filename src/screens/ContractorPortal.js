@@ -1661,10 +1661,6 @@ export default function ContractorPortal({ onBack }) {
 
     return (
       <View style={styles.mapContainer}>
-        {/* Dynamic Location Header overlay */}
-        <View style={styles.mapHeaderOverlay}>
-          <Text style={styles.mapHeaderTitle}>{currentLocationName}</Text>
-        </View>
 
         <MapView
           ref={mapRef}
@@ -2484,7 +2480,7 @@ export default function ContractorPortal({ onBack }) {
             <TouchableOpacity style={styles.headerBackBtn} onPress={onBack}>
               <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
-            <Text style={styles.portalHeaderTitle}>Müteahhit Portalı</Text>
+            <Text style={styles.portalHeaderTitle}>{activeTab === 'map' ? currentLocationName : 'Müteahhit Portalı'}</Text>
             <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
               <LogOut size={18} color={COLORS.danger} />
             </TouchableOpacity>
