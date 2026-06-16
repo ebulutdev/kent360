@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
-  Keyboard,
-  Dimensions
+  Dimensions,
+  Animated,
+  Easing
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -60,6 +61,48 @@ const getUnitDetails = (unit) => {
   };
 };
 
+const ActiveHighlight = React.memo(() => {
+  const pulseAnim = useRef(new Animated.Value(0.2)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.7,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.2,
+          duration: 900,
+          useNativeDriver: true,
+        })
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        top: 0, bottom: 0, left: 0, right: 0,
+        backgroundColor: 'rgba(99, 102, 241, 0.4)',
+        borderRadius: 8,
+        opacity: pulseAnim,
+        zIndex: 10,
+        pointerEvents: 'none',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: Platform.OS === 'ios' ? 0.8 : 1,
+        shadowRadius: 12,
+        elevation: Platform.OS === 'android' ? 6 : 0,
+      }}
+    />
+  );
+});
+
 export default function PhysicalInfoScreen({ data, updateData, onNext, onBack }) {
   const { width, height: screenHeight } = useWindowDimensions();
   const isSmallScreen = width < 410;
@@ -87,6 +130,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [savedBlocks, setSavedBlocks] = useState({});
   const [currentQuestionStep, setCurrentQuestionStep] = useState(0);
+
   const [roofType, setRoofType] = useState('normal'); // 'normal', 'mansart', 'none'
   const [hasAttic, setAttic] = useState(false);
   const [normalFloorCount, setNormalFloorCount] = useState(3);
@@ -420,6 +464,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   }, [normalFloorCount, groundUnitCount, basementCount, roofType]);
 
   // Navigation handlers for sub-steps
+  const jumpToStepByKey = (stepKey) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const index = STEPS.findIndex(s => s.key === stepKey);
+    if (index !== -1) {
+      setCurrentQuestionStep(index);
+    }
+  };
+
   const handleNextSubStep = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const next = currentQuestionStep + 1;
@@ -1006,6 +1058,12 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     }
   };
 
+  const activeStep = STEPS[currentQuestionStep];
+  const isRoofActive = activeStep?.key === 'roofType' || activeStep?.key === 'hasAttic';
+  const isGroundActive = activeStep?.key === 'groundUnitCount' || activeStep?.groundUnitIndex !== undefined;
+  const isBasementActive = (idx) => activeStep?.basementIndex === idx;
+  const isNormalFloorActive = (idx) => activeStep?.floorIndex === idx;
+
   return (
     <KeyboardAvoidingView
       style={globalStyles.container}
@@ -1051,7 +1109,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               <View style={styles.buildingWrapper}>
                 {/* Çatı */}
                 {roofType === 'mansart' ? (
-                  <View style={[styles.roofWrapper, { height: roofHeight }]}>
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => jumpToStepByKey('roofType')} style={[styles.roofWrapper, { height: roofHeight, zIndex: isRoofActive ? 20 : 1 }]}>
+                    {isRoofActive && <ActiveHighlight />}
                     <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="mansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1074,9 +1133,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                         MANSART
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ) : roofType === 'normal' ? (
-                  <View style={[styles.roofWrapper, { height: roofHeight }]}>
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => jumpToStepByKey('roofType')} style={[styles.roofWrapper, { height: roofHeight, zIndex: isRoofActive ? 20 : 1 }]}>
+                    {isRoofActive && <ActiveHighlight />}
                     <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="normalRoofGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1107,7 +1167,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                         {hasAttic ? 'ÇATI PİYESLİ' : 'NORMAL ÇATI'}
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ) : null}
 
                 {hasAttic && roofType !== 'none' && (
@@ -1124,8 +1184,20 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                     const isGround = floor.type === 'ground';
 
                     return (
-                      <View
+                      <TouchableOpacity
                         key={floor.key}
+                        activeOpacity={0.9}
+                        onPress={() => {
+                          if (isBasement) {
+                            const match = floor.key.match(/basement_(\d+)/);
+                            if (match) jumpToStepByKey(`basementUsage_${match[1]}`);
+                          } else if (isGround) {
+                            jumpToStepByKey('groundUnitCount');
+                          } else if (floor.type === 'normal') {
+                            const match = floor.key.match(/normal_(\d+)/);
+                            if (match) jumpToStepByKey(`floorFlatsCount_${match[1]}`);
+                          }
+                        }}
                         style={[
                           styles.floorRow,
                           isBasement && styles.floorRowBasement,
@@ -1137,10 +1209,17 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                             paddingVertical: rowPaddingVertical,
                             marginVertical: Math.max(1, Math.min(3, baseFloorHeight * 0.05)),
                             paddingHorizontal: 4,
-                            borderRadius: 6
+                            borderRadius: 6,
+                            position: 'relative',
+                            zIndex: ((isBasement && isBasementActive(parseInt(floor.key.split('_')[1] || '0', 10))) || (isGround && isGroundActive) || (floor.type === 'normal' && isNormalFloorActive(parseInt(floor.key.split('_')[1] || '0', 10)))) ? 20 : 1
                           }
                         ]}
                       >
+                        {((isBasement && isBasementActive(parseInt(floor.key.split('_')[1] || '0', 10))) ||
+                         (isGround && isGroundActive) ||
+                         (floor.type === 'normal' && isNormalFloorActive(parseInt(floor.key.split('_')[1] || '0', 10)))) && (
+                           <ActiveHighlight />
+                         )}
                         <View style={[styles.floorLabelColumn, { width: 44, marginRight: 4 }]}>
                           {renderFloorLabel(floor)}
                         </View>
@@ -1151,7 +1230,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                             return renderUnitCard(unit, unitNum, floor.key, uIdx);
                           })}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -1265,7 +1344,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   roofWrapper: {
-    width: '100%',
+    width: 220,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'flex-end',
