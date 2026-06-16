@@ -1693,7 +1693,8 @@ export default function ContractorPortal({ onBack }) {
             const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
 
             if (isCluster) {
-              const clusterWidth = pointCount > 99 ? 72 : (pointCount > 9 ? 56 : 48);
+              const clusterWidth = pointCount > 99 ? 76 : (pointCount > 9 ? 60 : 52);
+              const padHorizontal = pointCount > 9 ? 8 : 6;
               return (
                 <Marker
                   key={`cluster_${clusterId}_${pointCount}`}
@@ -1702,9 +1703,9 @@ export default function ContractorPortal({ onBack }) {
                   style={{ width: clusterWidth + 32, height: 64, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <View style={{ padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
-                    <View style={[styles.clusterMarkerContainer, { width: clusterWidth }]}>
-                      <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
-                      <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                    <View style={[styles.clusterMarkerContainer, { width: clusterWidth, paddingHorizontal: padHorizontal }]}>
+                      <User size={12} color="#FDC010" style={{ marginRight: 3 }} />
+                      <Text style={styles.clusterMarkerText} numberOfLines={1} ellipsizeMode="clip">{pointCount}</Text>
                     </View>
                   </View>
                 </Marker>
@@ -2842,6 +2843,8 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: 13,
     color: '#FDC010',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   singleMarkerPin: {
     width: 28,
