@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Supercluster from 'supercluster';
 import {
   View,
   Text,
@@ -45,6 +46,87 @@ const PORTAL_COLORS = {
   danger: '#EF4444',
   dangerBg: 'rgba(239, 68, 68, 0.15)',
   buttonText: '#1E293B'     // Koyu lacivert buton metni
+};
+
+const COORDINATES = {
+  'İstanbul': {
+    latitude: 41.0082,
+    longitude: 28.9784,
+    'Kadıköy': { latitude: 40.9910, longitude: 29.0270 },
+    'Beşiktaş': { latitude: 41.0428, longitude: 29.0075 },
+    'Üsküdar': { latitude: 41.0264, longitude: 29.0152 },
+    'Fatih': { latitude: 41.0186, longitude: 28.9436 },
+    'Şişli': { latitude: 41.0600, longitude: 28.9870 },
+    'Maltepe': { latitude: 40.9246, longitude: 29.1311 },
+    'Kartal': { latitude: 40.8886, longitude: 29.1852 },
+    'Pendik': { latitude: 40.8752, longitude: 29.2312 },
+    'Bahçelievler': { latitude: 40.9980, longitude: 28.8600 },
+    'Bakırköy': { latitude: 40.9782, longitude: 28.8744 },
+    'Bağcılar': { latitude: 41.0336, longitude: 28.8576 },
+    'Esenler': { latitude: 41.0370, longitude: 28.8890 }
+  },
+  'Ankara': {
+    latitude: 39.9334,
+    longitude: 32.8597,
+    'Çankaya': { latitude: 39.9080, longitude: 32.8622 },
+    'Keçiören': { latitude: 39.9784, longitude: 32.8643 },
+    'Yenimahalle': { latitude: 39.9482, longitude: 32.7984 },
+    'Mamak': { latitude: 39.9204, longitude: 32.9234 },
+    'Etimesgut': { latitude: 39.9460, longitude: 32.6582 }
+  },
+  'İzmir': {
+    latitude: 38.4237,
+    longitude: 27.1428,
+    'Bornova': { latitude: 38.4622, longitude: 27.2163 },
+    'Karşıyaka': { latitude: 38.4590, longitude: 27.1232 },
+    'Konak': { latitude: 38.4189, longitude: 27.1287 },
+    'Buca': { latitude: 38.3846, longitude: 27.1643 },
+    'Çeşme': { latitude: 38.3246, longitude: 26.3032 }
+  }
+};
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  return Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2);
+};
+
+const getNearestLocationName = (lat, lng, longitudeDelta) => {
+  if (longitudeDelta > 2.5) {
+    return 'Türkiye';
+  }
+  
+  let closestCity = 'İstanbul';
+  let minCityDist = Infinity;
+  
+  Object.keys(COORDINATES).forEach(cityName => {
+    const city = COORDINATES[cityName];
+    const dist = getDistance(lat, lng, city.latitude, city.longitude);
+    if (dist < minCityDist) {
+      minCityDist = dist;
+      closestCity = cityName;
+    }
+  });
+
+  let closestDistrict = '';
+  let minDistrictDist = Infinity;
+  
+  const cityDistricts = COORDINATES[closestCity];
+  Object.keys(cityDistricts).forEach(key => {
+    if (key !== 'latitude' && key !== 'longitude') {
+      const distCoords = cityDistricts[key];
+      const dist = getDistance(lat, lng, distCoords.latitude, distCoords.longitude);
+      if (dist < minDistrictDist) {
+        minDistrictDist = dist;
+        closestDistrict = key;
+      }
+    }
+  });
+  
+  // Only return district if it's reasonably close
+  if (minDistrictDist < 0.02) {
+    return closestDistrict;
+  }
+  
+  return closestCity;
 };
 
 const DARK_MAP_STYLE = [
@@ -132,6 +214,37 @@ export default function ContractorPortal({ onBack }) {
   const [mapFocusCoordinate, setMapFocusCoordinate] = useState(null);
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
   const [loadingGps, setLoadingGps] = useState(false);
+
+  const [mapRegion, setMapRegion] = useState(null);
+  const [currentLocationName, setCurrentLocationName] = useState('Türkiye');
+  const geocodeTimeoutRef = useRef(null);
+
+  const mapRequests = useMemo(() => {
+    return requests.filter(req => req.coordinates && req.coordinates.latitude && req.coordinates.longitude);
+  }, [requests]);
+
+  const superclusterIndex = useMemo(() => {
+    const index = new Supercluster({
+      radius: 60,
+      maxZoom: 16
+    });
+    
+    const points = mapRequests.map(req => ({
+      type: 'Feature',
+      properties: {
+        cluster: false,
+        requestId: req.id,
+        request: req
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [parseFloat(req.coordinates.longitude), parseFloat(req.coordinates.latitude)]
+      }
+    }));
+    
+    index.load(points);
+    return index;
+  }, [mapRequests]);
 
   const [contractorInfo, setContractorInfo] = useState(null);
   const [contractorProjects, setContractorProjects] = useState([]);
@@ -423,6 +536,45 @@ export default function ContractorPortal({ onBack }) {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, []);
+
+  // Harita bölgesi değiştikçe başlık güncellemesi ve reverse geocoding
+  useEffect(() => {
+    if (!mapRegion) return;
+
+    const { latitude, longitude, longitudeDelta } = mapRegion;
+
+    // 1. Yerel tablodan hızlı sorgulama (Offline-friendly & anlık tepki)
+    const localName = getNearestLocationName(latitude, longitude, longitudeDelta);
+    setCurrentLocationName(localName);
+
+    // 2. Debounced online lookup (Ağ isteğini azaltmak için 1.2 saniye gecikmeli)
+    if (longitudeDelta <= 2.5 && !isMock) {
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
+
+      geocodeTimeoutRef.current = setTimeout(async () => {
+        try {
+          let geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocoded && geocoded.length > 0) {
+            const place = geocoded[0];
+            const name = place.district || place.subregion || place.city || place.region;
+            if (name) {
+              setCurrentLocationName(name);
+            }
+          }
+        } catch (e) {
+          console.log("Online reverse geocoding error:", e);
+        }
+      }, 1200);
+    }
+
+    return () => {
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
+    };
+  }, [mapRegion]);
 
   // Animate map when focus coordinate changes
   useEffect(() => {
@@ -1265,6 +1417,30 @@ export default function ContractorPortal({ onBack }) {
     }
   };
 
+  const handleClusterPress = (clusterId, latitude, longitude) => {
+    if (mapRef.current) {
+      try {
+        const expansionZoom = superclusterIndex.getClusterExpansionZoom(clusterId);
+        const newDelta = 360 / Math.pow(2, expansionZoom);
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: newDelta,
+          longitudeDelta: newDelta
+        }, 800);
+      } catch (e) {
+        if (mapRegion) {
+          mapRef.current.animateToRegion({
+            latitude,
+            longitude,
+            latitudeDelta: mapRegion.latitudeDelta / 2,
+            longitudeDelta: mapRegion.longitudeDelta / 2
+          }, 800);
+        }
+      }
+    }
+  };
+
   const renderDashboard = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.listSectionHeader}>
@@ -1456,10 +1632,40 @@ export default function ContractorPortal({ onBack }) {
   );
 
   const renderMapView = () => {
-    const mapRequests = requests.filter(req => req.coordinates && req.coordinates.latitude && req.coordinates.longitude);
+    const activeRegion = mapRegion || (mapFocusCoordinate ? {
+      latitude: parseFloat(mapFocusCoordinate.latitude),
+      longitude: parseFloat(mapFocusCoordinate.longitude),
+      latitudeDelta: 0.012,
+      longitudeDelta: 0.012,
+    } : {
+      latitude: 39.9334,
+      longitude: 32.8597,
+      latitudeDelta: 7.5,
+      longitudeDelta: 7.5,
+    });
+
+    const westLng = activeRegion.longitude - activeRegion.longitudeDelta / 2;
+    const southLat = activeRegion.latitude - activeRegion.latitudeDelta / 2;
+    const eastLng = activeRegion.longitude + activeRegion.longitudeDelta / 2;
+    const northLat = activeRegion.latitude + activeRegion.latitudeDelta / 2;
+    const bbox = [westLng, southLat, eastLng, northLat];
+
+    const zoom = Math.max(0, Math.min(19, Math.round(Math.log2(360 / activeRegion.longitudeDelta))));
+    
+    let clusters = [];
+    try {
+      clusters = superclusterIndex.getClusters(bbox, zoom);
+    } catch (err) {
+      console.warn("Supercluster getClusters error:", err);
+    }
 
     return (
       <View style={styles.mapContainer}>
+        {/* Dynamic Location Header overlay */}
+        <View style={styles.mapHeaderOverlay}>
+          <Text style={styles.mapHeaderTitle}>{currentLocationName}</Text>
+        </View>
+
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
@@ -1477,9 +1683,31 @@ export default function ContractorPortal({ onBack }) {
             latitudeDelta: 7.5,
             longitudeDelta: 7.5,
           }}
+          onRegionChangeComplete={(region) => {
+            setMapRegion(region);
+          }}
           onPress={() => setSelectedMapRequest(null)}
         >
-          {mapRequests.map((req) => {
+          {clusters.map((cluster) => {
+            const [longitude, latitude] = cluster.geometry.coordinates;
+            const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
+
+            if (isCluster) {
+              return (
+                <Marker
+                  key={`cluster_${clusterId}`}
+                  coordinate={{ latitude, longitude }}
+                  onPress={() => handleClusterPress(clusterId, latitude, longitude)}
+                >
+                  <View style={styles.clusterMarkerContainer}>
+                    <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
+                    <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                  </View>
+                </Marker>
+              );
+            }
+
+            const req = cluster.properties.request;
             const breakdown = getRequestUnitBreakdown(req);
             const title = req.buildingType === 'complex' ? 'Site Dönüşüm Projesi' : 'Apartman Dönüşüm Başvurusu';
             const description = `${req.city}/${req.district} - ${req.buildingCount || 1} Blok, ${breakdown.daire} Daire`;
@@ -2567,9 +2795,47 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
   },
+  mapHeaderOverlay: {
+    position: 'absolute',
+    top: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  mapHeaderTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 28,
+    color: '#1E293B',
+    textShadowColor: 'rgba(255, 255, 255, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  clusterMarkerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#FDC010',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  clusterMarkerText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: '#FDC010',
+  },
   mapInfoOverlay: {
     position: 'absolute',
-    top: 16,
+    top: 80,
     alignSelf: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
