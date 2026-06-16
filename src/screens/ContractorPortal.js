@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Supercluster from 'supercluster';
 import {
   View,
   Text,
@@ -20,6 +21,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
+import Svg, { Path, Circle, Text as SvgText, Defs, Mask, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db, isMock } from '../../firebaseConfig';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
@@ -45,6 +47,87 @@ const PORTAL_COLORS = {
   danger: '#EF4444',
   dangerBg: 'rgba(239, 68, 68, 0.15)',
   buttonText: '#1E293B'     // Koyu lacivert buton metni
+};
+
+const COORDINATES = {
+  'İstanbul': {
+    latitude: 41.0082,
+    longitude: 28.9784,
+    'Kadıköy': { latitude: 40.9910, longitude: 29.0270 },
+    'Beşiktaş': { latitude: 41.0428, longitude: 29.0075 },
+    'Üsküdar': { latitude: 41.0264, longitude: 29.0152 },
+    'Fatih': { latitude: 41.0186, longitude: 28.9436 },
+    'Şişli': { latitude: 41.0600, longitude: 28.9870 },
+    'Maltepe': { latitude: 40.9246, longitude: 29.1311 },
+    'Kartal': { latitude: 40.8886, longitude: 29.1852 },
+    'Pendik': { latitude: 40.8752, longitude: 29.2312 },
+    'Bahçelievler': { latitude: 40.9980, longitude: 28.8600 },
+    'Bakırköy': { latitude: 40.9782, longitude: 28.8744 },
+    'Bağcılar': { latitude: 41.0336, longitude: 28.8576 },
+    'Esenler': { latitude: 41.0370, longitude: 28.8890 }
+  },
+  'Ankara': {
+    latitude: 39.9334,
+    longitude: 32.8597,
+    'Çankaya': { latitude: 39.9080, longitude: 32.8622 },
+    'Keçiören': { latitude: 39.9784, longitude: 32.8643 },
+    'Yenimahalle': { latitude: 39.9482, longitude: 32.7984 },
+    'Mamak': { latitude: 39.9204, longitude: 32.9234 },
+    'Etimesgut': { latitude: 39.9460, longitude: 32.6582 }
+  },
+  'İzmir': {
+    latitude: 38.4237,
+    longitude: 27.1428,
+    'Bornova': { latitude: 38.4622, longitude: 27.2163 },
+    'Karşıyaka': { latitude: 38.4590, longitude: 27.1232 },
+    'Konak': { latitude: 38.4189, longitude: 27.1287 },
+    'Buca': { latitude: 38.3846, longitude: 27.1643 },
+    'Çeşme': { latitude: 38.3246, longitude: 26.3032 }
+  }
+};
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  return Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2);
+};
+
+const getNearestLocationName = (lat, lng, longitudeDelta) => {
+  if (longitudeDelta > 2.5) {
+    return 'Türkiye';
+  }
+
+  let closestCity = 'İstanbul';
+  let minCityDist = Infinity;
+
+  Object.keys(COORDINATES).forEach(cityName => {
+    const city = COORDINATES[cityName];
+    const dist = getDistance(lat, lng, city.latitude, city.longitude);
+    if (dist < minCityDist) {
+      minCityDist = dist;
+      closestCity = cityName;
+    }
+  });
+
+  let closestDistrict = '';
+  let minDistrictDist = Infinity;
+
+  const cityDistricts = COORDINATES[closestCity];
+  Object.keys(cityDistricts).forEach(key => {
+    if (key !== 'latitude' && key !== 'longitude') {
+      const distCoords = cityDistricts[key];
+      const dist = getDistance(lat, lng, distCoords.latitude, distCoords.longitude);
+      if (dist < minDistrictDist) {
+        minDistrictDist = dist;
+        closestDistrict = key;
+      }
+    }
+  });
+
+  // Only return district if it's reasonably close
+  if (minDistrictDist < 0.02) {
+    return closestDistrict;
+  }
+
+  return closestCity;
 };
 
 const DARK_MAP_STYLE = [
@@ -114,6 +197,120 @@ const cleanPayload = (val) => {
   return val;
 };
 
+const CustomTeardropPin = ({ size = 36, isFocused = false, isCluster = false }) => {
+  const fillColor = isFocused ? '#EF4444' : '#F59E0B';
+  const strokeColor = isFocused ? '#B91C1C' : '#B45309';
+
+  if (isCluster) {
+    // Cluster version: double overlapping pins (SOLID layout matching the user's template)
+    const width = size * 1.28;  // 36 * 1.28 = 46px
+    const height = size * 1.39; // 36 * 1.39 = 50px
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={width} height={height} viewBox="0 0 42 46" style={{ position: 'absolute' }}>
+          <Defs>
+            {/* The mask is the solid body of the back pin */}
+            <Mask id="backPinMask">
+              <Path
+                d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+                fill="#FFFFFF"
+                transform="translate(13, 3)"
+              />
+            </Mask>
+          </Defs>
+
+          {/* Back pin shadow */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill="rgba(0, 0, 0, 0.12)"
+            transform="translate(14.5, 4.5)"
+          />
+          {/* Front pin shadow */}
+          <Path
+            d="M 12 29.5 C 6.5 21, 2 16.5 2 11 A 10 10 0 1 1 22 11 C 22 16.5 17.5 21, 12 29.5 Z"
+            fill="rgba(0, 0, 0, 0.15)"
+            transform="translate(3.5, 14.5)"
+          />
+          {/* Back pin body */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={0.8}
+            strokeLinejoin="round"
+            transform="translate(13, 3)"
+          />
+          {/* Back pin inner hole cutout (white center) */}
+          <Circle
+            cx="25"
+            cy="13"
+            r="4.5"
+            fill="#FFFFFF"
+          />
+
+          {/* Separation Mask: Front pin outline drawn in thick white, masked to ONLY show on top of the back pin body */}
+          <G mask="url(#backPinMask)">
+            <Path
+              d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth={3.2}
+              strokeLinejoin="round"
+              transform="translate(2, 13)"
+            />
+          </G>
+
+          {/* Front pin body - drawn with the exact same strokeColor and strokeWidth as the back pin */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={0.8}
+            strokeLinejoin="round"
+            transform="translate(2, 13)"
+          />
+          {/* Front pin inner hole cutout (white center) */}
+          <Circle
+            cx="14"
+            cy="23"
+            r="4.5"
+            fill="#FFFFFF"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // Single marker version
+  return (
+    <View style={{ width: size, height: size * 1.25, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size * 1.25} viewBox="0 0 24 30" style={{ position: 'absolute' }}>
+        {/* Soft shadow for the pin */}
+        <Path
+          d="M 12 29.5 C 6.5 21, 2 16.5 2 11 A 10 10 0 1 1 22 11 C 22 16.5 17.5 21, 12 29.5 Z"
+          fill="rgba(0, 0, 0, 0.15)"
+          transform="translate(1.5, 1.5)"
+        />
+        {/* Pin body */}
+        <Path
+          d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+          fill={fillColor}
+          stroke={strokeColor}
+          strokeWidth={0.8}
+          strokeLinejoin="round"
+        />
+        {/* Inner white cutout hole */}
+        <Circle
+          cx="12"
+          cy="10"
+          r="4.5"
+          fill="#FFFFFF"
+        />
+      </Svg>
+    </View>
+  );
+};
+
 export default function ContractorPortal({ onBack }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
@@ -132,6 +329,37 @@ export default function ContractorPortal({ onBack }) {
   const [mapFocusCoordinate, setMapFocusCoordinate] = useState(null);
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
   const [loadingGps, setLoadingGps] = useState(false);
+
+  const [mapRegion, setMapRegion] = useState(null);
+  const [currentLocationName, setCurrentLocationName] = useState('Türkiye');
+  const geocodeTimeoutRef = useRef(null);
+
+  const mapRequests = useMemo(() => {
+    return requests.filter(req => req.coordinates && req.coordinates.latitude && req.coordinates.longitude);
+  }, [requests]);
+
+  const superclusterIndex = useMemo(() => {
+    const index = new Supercluster({
+      radius: 60,
+      maxZoom: 16
+    });
+
+    const points = mapRequests.map(req => ({
+      type: 'Feature',
+      properties: {
+        cluster: false,
+        requestId: req.id,
+        request: req
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [parseFloat(req.coordinates.longitude), parseFloat(req.coordinates.latitude)]
+      }
+    }));
+
+    index.load(points);
+    return index;
+  }, [mapRequests]);
 
   const [contractorInfo, setContractorInfo] = useState(null);
   const [contractorProjects, setContractorProjects] = useState([]);
@@ -423,6 +651,45 @@ export default function ContractorPortal({ onBack }) {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, []);
+
+  // Harita bölgesi değiştikçe başlık güncellemesi ve reverse geocoding
+  useEffect(() => {
+    if (!mapRegion) return;
+
+    const { latitude, longitude, longitudeDelta } = mapRegion;
+
+    // 1. Yerel tablodan hızlı sorgulama (Offline-friendly & anlık tepki)
+    const localName = getNearestLocationName(latitude, longitude, longitudeDelta);
+    setCurrentLocationName(localName);
+
+    // 2. Debounced online lookup (Ağ isteğini azaltmak için 1.2 saniye gecikmeli)
+    if (longitudeDelta <= 2.5 && !isMock) {
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
+
+      geocodeTimeoutRef.current = setTimeout(async () => {
+        try {
+          let geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocoded && geocoded.length > 0) {
+            const place = geocoded[0];
+            const name = place.district || place.subregion || place.city || place.region;
+            if (name) {
+              setCurrentLocationName(name);
+            }
+          }
+        } catch (e) {
+          console.log("Online reverse geocoding error:", e);
+        }
+      }, 1200);
+    }
+
+    return () => {
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
+    };
+  }, [mapRegion]);
 
   // Animate map when focus coordinate changes
   useEffect(() => {
@@ -1259,9 +1526,34 @@ export default function ContractorPortal({ onBack }) {
       mapRef.current.animateToRegion({
         latitude: 39.9334,
         longitude: 32.8597,
-        latitudeDelta: 7.5,
-        longitudeDelta: 7.5,
+        latitudeDelta: 8.5,
+        longitudeDelta: 12.0,
       }, 1000);
+    }
+  };
+
+  const handleClusterPress = (clusterId, latitude, longitude) => {
+    if (mapRef.current) {
+      try {
+        const expansionZoom = superclusterIndex.getClusterExpansionZoom(clusterId);
+        const targetZoom = Math.min(expansionZoom, 15);
+        const newDelta = 360 / Math.pow(2, targetZoom);
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: newDelta,
+          longitudeDelta: newDelta
+        }, 800);
+      } catch (e) {
+        const currentLatDelta = mapRegion ? mapRegion.latitudeDelta : 8.5;
+        const currentLngDelta = mapRegion ? mapRegion.longitudeDelta : 12.0;
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: currentLatDelta / 2.5,
+          longitudeDelta: currentLngDelta / 2.5
+        }, 800);
+      }
     }
   };
 
@@ -1456,10 +1748,44 @@ export default function ContractorPortal({ onBack }) {
   );
 
   const renderMapView = () => {
-    const mapRequests = requests.filter(req => req.coordinates && req.coordinates.latitude && req.coordinates.longitude);
+    const activeRegion = mapRegion || (mapFocusCoordinate ? {
+      latitude: parseFloat(mapFocusCoordinate.latitude),
+      longitude: parseFloat(mapFocusCoordinate.longitude),
+      latitudeDelta: 0.012,
+      longitudeDelta: 0.012,
+    } : {
+      latitude: 39.9334,
+      longitude: 32.8597,
+      latitudeDelta: 8.5,
+      longitudeDelta: 12.0,
+    });
+
+    const westLng = activeRegion.longitude - activeRegion.longitudeDelta / 2;
+    const southLat = activeRegion.latitude - activeRegion.latitudeDelta / 2;
+    const eastLng = activeRegion.longitude + activeRegion.longitudeDelta / 2;
+    const northLat = activeRegion.latitude + activeRegion.latitudeDelta / 2;
+    const bbox = [westLng, southLat, eastLng, northLat];
+
+    const zoom = Math.max(0, Math.min(19, Math.round(Math.log2(360 / activeRegion.longitudeDelta))));
+
+    let clusters = [];
+    try {
+      clusters = superclusterIndex.getClusters(bbox, zoom);
+      console.log("LOG_SUPERCLUSTER: zoom =", zoom, "longitudeDelta =", activeRegion.longitudeDelta, "clustersCount =", clusters.length);
+      clusters.forEach((c, idx) => {
+        if (c.properties.cluster) {
+          console.log(`LOG_SUPERCLUSTER: - Cluster ${idx} at [${c.geometry.coordinates}], Count: ${c.properties.point_count}`);
+        } else {
+          console.log(`LOG_SUPERCLUSTER: - Single ${idx} for ${c.properties.request.district} at [${c.geometry.coordinates}]`);
+        }
+      });
+    } catch (err) {
+      console.warn("Supercluster getClusters error:", err);
+    }
 
     return (
       <View style={styles.mapContainer}>
+
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
@@ -1474,16 +1800,38 @@ export default function ContractorPortal({ onBack }) {
           } : {
             latitude: 39.9334,
             longitude: 32.8597,
-            latitudeDelta: 7.5,
-            longitudeDelta: 7.5,
+            latitudeDelta: 8.5,
+            longitudeDelta: 12.0,
           }}
-          onPress={() => setSelectedMapRequest(null)}
+          onRegionChangeComplete={(region) => {
+            setMapRegion(region);
+          }}
+          onPress={() => {
+            setSelectedMapRequest(null);
+            setMapFocusCoordinate(null);
+          }}
         >
-          {mapRequests.map((req) => {
-            const breakdown = getRequestUnitBreakdown(req);
-            const title = req.buildingType === 'complex' ? 'Site Dönüşüm Projesi' : 'Apartman Dönüşüm Başvurusu';
-            const description = `${req.city}/${req.district} - ${req.buildingCount || 1} Blok, ${breakdown.daire} Daire`;
+          {clusters.map((cluster) => {
+            const [longitude, latitude] = cluster.geometry.coordinates;
+            const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
 
+            if (isCluster) {
+              return (
+                <Marker
+                  key={`cluster_${clusterId}_${pointCount}_v23`}
+                  coordinate={{ latitude, longitude }}
+                  onPress={() => handleClusterPress(clusterId, latitude, longitude)}
+                  anchor={{ x: 0.33, y: 0.90 }}
+                  style={{ width: 46, height: 50 }}
+                >
+                  <View style={{ width: 46, height: 50, backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                    <CustomTeardropPin size={36} isFocused={false} isCluster={true} />
+                  </View>
+                </Marker>
+              );
+            }
+
+            const req = cluster.properties.request;
             const isFocused = (mapFocusCoordinate &&
               parseFloat(req.coordinates.latitude) === parseFloat(mapFocusCoordinate.latitude) &&
               parseFloat(req.coordinates.longitude) === parseFloat(mapFocusCoordinate.longitude)) ||
@@ -1491,16 +1839,19 @@ export default function ContractorPortal({ onBack }) {
 
             return (
               <Marker
-                key={req.id || `marker_${Math.random()}`}
+                key={`marker_${req.id}_${isFocused ? 'focused' : 'normal'}`}
                 coordinate={{
                   latitude: parseFloat(req.coordinates.latitude),
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
-                title={title}
-                description={description}
-                pinColor={isFocused ? PORTAL_COLORS.danger : PORTAL_COLORS.accent}
                 onPress={() => handleMarkerPress(req)}
-              />
+                anchor={{ x: 0.5, y: 1.0 }}
+                style={{ width: 36, height: 45 }}
+              >
+                <View style={{ width: 36, height: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                  <CustomTeardropPin size={36} isFocused={isFocused} />
+                </View>
+              </Marker>
             );
           })}
         </MapView>
@@ -1513,9 +1864,9 @@ export default function ContractorPortal({ onBack }) {
             activeOpacity={0.8}
           >
             {loadingGps ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color="#94A3B8" />
             ) : (
-              <Compass size={20} color="#FFFFFF" />
+              <Compass size={20} color="#94A3B8" />
             )}
           </TouchableOpacity>
 
@@ -1524,7 +1875,7 @@ export default function ContractorPortal({ onBack }) {
             onPress={handleResetMapZoom}
             activeOpacity={0.8}
           >
-            <Globe size={20} color="#FFFFFF" />
+            <Globe size={20} color="#94A3B8" />
           </TouchableOpacity>
         </View>
 
@@ -1558,7 +1909,10 @@ export default function ContractorPortal({ onBack }) {
                 </View>
                 <TouchableOpacity
                   style={styles.closeMapCardBtn}
-                  onPress={() => setSelectedMapRequest(null)}
+                  onPress={() => {
+                    setSelectedMapRequest(null);
+                    setMapFocusCoordinate(null);
+                  }}
                 >
                   <X size={18} color="#94A3B8" />
                 </TouchableOpacity>
@@ -1675,6 +2029,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('list');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -1687,6 +2042,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('map');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -1699,6 +2055,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('profile');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -2245,13 +2602,46 @@ export default function ContractorPortal({ onBack }) {
             {
               paddingTop: insets.top > 0 ? insets.top + 12 : 16,
               paddingBottom: 16
+            },
+            activeTab === 'map' && {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: 'transparent',
+              borderBottomWidth: 0,
+              zIndex: 1000,
+              elevation: 0,
+              shadowOpacity: 0,
             }
           ]}>
-            <TouchableOpacity style={styles.headerBackBtn} onPress={onBack}>
+            <TouchableOpacity
+              style={[
+                styles.headerBackBtn,
+                activeTab === 'map' && styles.floatingHeaderBtn
+              ]}
+              onPress={onBack}
+            >
               <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
-            <Text style={styles.portalHeaderTitle}>Müteahhit Portalı</Text>
-            <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
+
+            {activeTab === 'map' ? (
+              <View style={styles.floatingHeaderTitleContainer}>
+                <Text style={styles.floatingHeaderTitleText} numberOfLines={1}>{currentLocationName}</Text>
+              </View>
+            ) : (
+              <Text style={styles.portalHeaderTitle}>
+                {activeTab === 'list' ? 'Müteahhit Portalı' : 'Profil'}
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.headerLogoutBtn,
+                activeTab === 'map' && styles.floatingHeaderBtn
+              ]}
+              onPress={handleLogout}
+            >
               <LogOut size={18} color={COLORS.danger} />
             </TouchableOpacity>
           </View>
@@ -2567,9 +2957,68 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
   },
+  mapHeaderOverlay: {
+    position: 'absolute',
+    top: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  mapHeaderTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 28,
+    color: '#1E293B',
+    textShadowColor: 'rgba(255, 255, 255, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  clusterMarkerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: '#FDC010',
+    height: 34,
+    paddingHorizontal: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  clusterMarkerText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: '#FDC010',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  singleMarkerContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FDC010',
+    borderWidth: 1.5,
+    borderColor: '#1E293B',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  singleMarkerFocused: {
+    backgroundColor: '#EF4444',
+    borderColor: '#FFFFFF',
+  },
   mapInfoOverlay: {
     position: 'absolute',
-    top: 16,
+    top: 130,
     alignSelf: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
@@ -2765,7 +3214,7 @@ const styles = StyleSheet.create({
   mapControlsContainer: {
     position: 'absolute',
     right: 16,
-    top: 80,
+    top: 130,
     flexDirection: 'column',
     gap: 12,
     zIndex: 1500,
@@ -3201,6 +3650,40 @@ const styles = StyleSheet.create({
     color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 13,
+  },
+  floatingHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    padding: 0,
+  },
+  floatingHeaderTitleContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+    maxWidth: 200,
+  },
+  floatingHeaderTitleText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: PORTAL_COLORS.textTitle,
   },
 });
 
