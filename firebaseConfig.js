@@ -11,7 +11,8 @@ const firebaseConfig = {
   projectId: "kent360-f48cb",
   storageBucket: "kent360-f48cb.firebasestorage.app",
   messagingSenderId: "1073870792869",
-  appId: "1:1073870792869:web:b2e88ed16eefdee6c0854c"
+  appId: "1:1073870792869:web:b2e88ed16eefdee6c0854c",
+  measurementId: "G-006PRQ41EY"
 };
 
 let app;
