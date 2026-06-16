@@ -1693,14 +1693,15 @@ export default function ContractorPortal({ onBack }) {
             const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
 
             if (isCluster) {
+              const clusterWidth = pointCount > 99 ? 72 : (pointCount > 9 ? 56 : 48);
               return (
                 <Marker
                   key={`cluster_${clusterId}`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
                 >
-                  <View style={{ padding: 6 }}>
-                    <View style={styles.clusterMarkerContainer}>
+                  <View style={{ padding: 8, alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={[styles.clusterMarkerContainer, { minWidth: clusterWidth }]}>
                       <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
                       <Text style={styles.clusterMarkerText}>{pointCount}</Text>
                     </View>
@@ -2821,11 +2822,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#1E293B',
-    borderRadius: 20,
+    borderRadius: 17,
     borderWidth: 1.5,
     borderColor: '#FDC010',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    height: 34,
+    paddingHorizontal: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
