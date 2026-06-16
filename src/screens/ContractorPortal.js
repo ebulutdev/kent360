@@ -1700,9 +1700,8 @@ export default function ContractorPortal({ onBack }) {
                   key={`cluster_${clusterId}_${pointCount}`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
-                  style={{ width: clusterWidth + 32, height: 64, justifyContent: 'center', alignItems: 'center' }}
                 >
-                  <View style={{ padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                  <View style={{ width: clusterWidth + 32, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
                     <View style={[styles.clusterMarkerContainer, { width: clusterWidth, paddingHorizontal: padHorizontal }]}>
                       <User size={12} color="#FDC010" style={{ marginRight: 3 }} />
                       <Text style={styles.clusterMarkerText} numberOfLines={1} ellipsizeMode="clip">{pointCount}</Text>
@@ -1727,9 +1726,8 @@ export default function ContractorPortal({ onBack }) {
                 }}
                 onPress={() => handleMarkerPress(req)}
                 anchor={{ x: 0.5, y: 0.81 }}
-                style={{ width: 64, height: 64, justifyContent: 'center', alignItems: 'center' }}
               >
-                <View style={{ padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
                   <View style={[
                     styles.singleMarkerPin,
                     isFocused && styles.singleMarkerPinFocused
