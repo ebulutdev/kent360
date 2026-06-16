@@ -133,7 +133,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
   const [roofType, setRoofType] = useState('normal'); // 'normal', 'mansart', 'none'
   const [hasAttic, setAttic] = useState(false);
-  const [contractorFlatCount, setContractorFlatCount] = useState(0);
+  const [newTotalFlats, setNewTotalFlats] = useState(0);
   const [normalFloorCount, setNormalFloorCount] = useState(3);
   const [flatsPerFloor, setFlatsPerFloor] = useState({ 1: 2, 2: 2, 3: 2 });
   const [groundUnitCount, setGroundUnitCount] = useState(2);
@@ -157,6 +157,9 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         setFootprintSqm(existingStructure.averageSqm);
         setNormalFloorSqm(existingStructure.averageSqm);
       }
+
+      if (existingStructure.newTotalFlats !== undefined) setNewTotalFlats(existingStructure.newTotalFlats);
+      else if (existingStructure.contractorFlatCount !== undefined) setNewTotalFlats(existingStructure.contractorFlatCount);
 
       const floors = existingStructure.floors || [];
 
@@ -339,7 +342,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         basementUnits.push({
           id: `basement_${i}_${u}`,
           type: bType,
-          name: bType === 'depo' ? 'Depo' : 'Sığınak'
+          name: bType === 'depo' ? 'Depo' : (bType === 'siginak' ? 'Sığınak' : (bType === 'dukkan' ? 'Dükkan' : 'Daire'))
         });
       }
       floors.push({
@@ -454,11 +457,11 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       });
     }
 
-    // Müteahhit Daire Sayısı
+    // Yeni Bina Daire Sayısı
     steps.push({
-      title: 'Müteahhit Payı',
-      question: 'Bu binada müteahhite verilecek (kalacak) toplam daire sayısı nedir?',
-      key: 'contractorFlatCount'
+      title: 'Yeni Bina Kapasitesi',
+      question: 'Yeni binanızda toplam kaç daire olacak?',
+      key: 'newTotalFlats'
     });
 
     // Onay ve Kontrol
@@ -513,7 +516,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       footprintSqm: footprintSqm,
       normalFloorSqm: normalFloorSqm,
       averageSqm: normalFloorSqm, // Geriye dönük uyumluluk için
-      contractorFlatCount: contractorFlatCount,
+      newTotalFlats: newTotalFlats,
       floors: computedBlockData.floors
     };
 
@@ -782,15 +785,18 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       return (
         <View style={styles.basementStepContainer}>
           <Text style={styles.subQuestionLabel}>{bIdx}. Bodrum Birim Tipi:</Text>
-          <View style={styles.optionsRowSmall}>
+          <View style={[styles.optionsRowSmall, { flexWrap: 'wrap' }]}>
             {[
               { type: 'depo', label: 'Depo / Kömürlük' },
-              { type: 'siginak', label: 'Ortak Sığınak' }
+              { type: 'siginak', label: 'Ortak Sığınak' },
+              { type: 'dukkan', label: 'Dükkan' },
+              { type: 'daire', label: 'Daire' }
             ].map(opt => (
               <TouchableOpacity
                 key={opt.type}
                 style={[
                   styles.optionButtonHalfSmall,
+                  { minWidth: '45%', marginBottom: 4 },
                   bType === opt.type && styles.optionButtonActive
                 ]}
                 onPress={() => {
@@ -1009,21 +1015,21 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
           </View>
         );
 
-      case 'contractorFlatCount':
+      case 'newTotalFlats':
         return (
           <View style={styles.counterWrapper}>
-            <Text style={styles.counterSubLabel}>MÜTEAHHİTE KALACAK DAİRE</Text>
+            <Text style={styles.counterSubLabel}>YENİ BİNADAKİ DAİRE SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setContractorFlatCount(prev => Math.max(0, prev - 1)); }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.max(0, prev - 1)); }}
               >
                 <Minus size={20} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text style={styles.counterValue}>{contractorFlatCount}</Text>
+              <Text style={styles.counterValue}>{newTotalFlats}</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setContractorFlatCount(prev => Math.min(100, prev + 1)); }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.min(100, prev + 1)); }}
               >
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -1043,8 +1049,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 </Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabelText}>Müteahhit Payı:</Text>
-                <Text style={styles.summaryValueText}>{contractorFlatCount} Daire</Text>
+                <Text style={styles.summaryLabelText}>Yeni Bina Kapasitesi:</Text>
+                <Text style={styles.summaryValueText}>{newTotalFlats} Daire</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Normal Kat Sayısı:</Text>
@@ -1076,9 +1082,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                     const floorNum = idx + 1;
                     const bType = basementTypes[floorNum] || 'depo';
                     const bUnitCount = basementUnitCounts[floorNum] || 1;
+                    const typeName = bType === 'depo' ? 'Depo' : (bType === 'siginak' ? 'Sığınak' : (bType === 'dukkan' ? 'Dükkan' : 'Daire'));
                     return (
                       <Text key={idx} style={[styles.summaryValueText, { marginLeft: 8, marginTop: 2 }]}>
-                        • {floorNum}. Bodrum Kat: {bUnitCount} Adet {bType === 'depo' ? 'Depo' : 'Sığınak'}
+                        • {floorNum}. Bodrum Kat: {bUnitCount} Adet {typeName}
                       </Text>
                     );
                   })}

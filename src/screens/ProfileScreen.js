@@ -74,6 +74,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const [parselNo, setParselNo] = useState(data.parselNo || firstDeed?.parsel || '15');
   const [floorsCount, setFloorsCount] = useState(data.floorsCount || firstFloorCount || 1);
   const [contractorFlatCount, setContractorFlatCount] = useState(data.contractorFlatCount || 0);
+  const [mutType, setMutType] = useState(data.mutType || (data.contractorFlatCount > 0 ? 'MÜT D' : 'MÜT YOK'));
   const [isMansart, setIsMansart] = useState(
     data.isMansart !== undefined ? data.isMansart : (hasMansartRoof || false)
   );
@@ -106,7 +107,14 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const hasInitialized = useRef(false);
   useEffect(() => {
     if (hasInitialized.current) return;
-    if (data.contractorFlatCount !== undefined) setContractorFlatCount(data.contractorFlatCount);
+    if (data.contractorFlatCount !== undefined) {
+      setContractorFlatCount(data.contractorFlatCount);
+    }
+    if (data.mutType !== undefined) {
+      setMutType(data.mutType);
+    } else if (data.contractorFlatCount > 0) {
+      setMutType('MÜT D');
+    }
     if (data.width) {
       setBuildingWidth(data.width);
       setLocalWidth(String(data.width));
@@ -186,7 +194,8 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
         adaNo,
         parselNo,
         floorsCount,
-        contractorFlatCount,
+        mutType,
+        contractorFlatCount: mutType === 'MÜT YOK' ? 0 : contractorFlatCount,
         isMansart,
         width: buildingWidth,
         depth: buildingDepth,
@@ -200,9 +209,10 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   };
 
   // Steps configuration
-  const STEPS = useMemo(() => [
-    {
-      title: 'Bina Genişliği (En)',
+  const STEPS = useMemo(() => {
+    const steps = [
+      {
+        title: 'Bina Genişliği (En)',
       question: 'Binanızın yatay genişliği (en) kaç metredir?',
       key: 'width'
     },
@@ -236,28 +246,44 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       direction: 'right'
     },
     {
-      title: 'Müteahhit Payı',
-      question: 'Bu projede müteahhite kalacak (verilecek) daire sayısı nedir?',
-      key: 'contractorFlatCount'
-    },
-    {
-      title: 'Onay ve Kontrol',
-      question: 'Oluşturduğunuz parsel ve cephe modeli aşağıdaki gibidir. Onaylıyor musunuz?',
-      key: 'confirmation'
+      title: 'Hesaplama Tipi',
+      question: 'Projenizde müteahhit payı hesaplama modelini seçiniz.',
+      key: 'mutType'
     }
-  ], []);
+  ];
+
+  if (mutType === 'MÜT D') {
+    steps.push({
+      title: 'Müteahhit Payı',
+      question: 'Müteahhite kalacak (verilecek) daire sayısı nedir?',
+      key: 'contractorFlatCount'
+    });
+  }
+
+  steps.push({
+    title: 'Onay ve Kontrol',
+    question: 'Oluşturduğunuz parsel ve cephe modeli aşağıdaki gibidir. Onaylıyor musunuz?',
+    key: 'confirmation'
+  });
+
+  return steps;
+}, [mutType]);
 
   const handleNextSubStep = () => {
     triggerHaptic();
     const next = currentQuestionStep + 1;
     if (next < STEPS.length) {
-      if (STEPS[currentQuestionStep].key === 'contractorFlatCount' && contractorFlatCount === 0) {
+      if (STEPS[currentQuestionStep].key === 'mutType' && mutType === 'MÜT YOK') {
         Alert.alert(
           'Müteahhit Pay Durumu',
-          'Müteahhite pay (daire) vermiyorsunuz, emin misiniz?',
+          'Müteahhite pay vermiyorsunuz, emin misiniz?',
           [
             { text: 'Hayır', style: 'cancel' },
-            { text: 'Evet', onPress: () => setCurrentQuestionStep(next) }
+            { text: 'Evet', onPress: () => {
+                setContractorFlatCount(0);
+                setCurrentQuestionStep(next);
+              }
+            }
           ],
           { cancelable: false }
         );
@@ -517,6 +543,34 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     }
 
     switch (activeStep.key) {
+      case 'mutType':
+        return (
+          <View style={styles.optionsGrid}>
+            {[
+              { type: 'MÜT D', label: 'MÜT D (Daire Payı)', desc: 'Müteahhide verilecek bağımsız bölüm daire adedini temel alır.' },
+              { type: 'MÜT YOK', label: 'MÜT YOK (Paysız)', desc: 'Müteahhit payı olmadığını belirtir. Proje malikler tarafından karşılanır.' }
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.type}
+                style={[
+                  styles.optionButton,
+                  mutType === opt.type && styles.optionButtonActive
+                ]}
+                onPress={() => setMutType(opt.type)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  mutType === opt.type && styles.optionButtonTextActive
+                ]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+
       case 'contractorFlatCount':
         return (
           <View style={styles.counterWrapper}>
@@ -626,9 +680,15 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 <Text style={styles.summaryValueText}>{adaNo} / {parselNo}</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabelText}>Müteahhit Payı:</Text>
-                <Text style={styles.summaryValueText}>{contractorFlatCount} Daire</Text>
+                <Text style={styles.summaryLabelText}>Hesaplama Tipi:</Text>
+                <Text style={styles.summaryValueText}>{mutType}</Text>
               </View>
+              {mutType === 'MÜT D' && (
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabelText}>Müteahhit Payı:</Text>
+                  <Text style={styles.summaryValueText}>{contractorFlatCount} Daire</Text>
+                </View>
+              )}
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Bina Ölçüleri:</Text>
                 <Text style={styles.summaryValueText}>{buildingWidth}m x {buildingDepth}m ({totalArea} m²)</Text>
@@ -750,7 +810,9 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                       <Text style={styles.subText}>
                         {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
                       </Text>
-                      <Text style={styles.subTextMuted}>Müteahhit Payı: {contractorFlatCount} Daire</Text>
+                      <Text style={styles.subTextMuted}>
+                        Hesap Tipi: {mutType === 'MÜT YOK' ? 'Paysız' : `${contractorFlatCount} Daire`}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
