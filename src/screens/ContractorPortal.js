@@ -1696,14 +1696,16 @@ export default function ContractorPortal({ onBack }) {
               const clusterWidth = pointCount > 99 ? 72 : (pointCount > 9 ? 56 : 48);
               return (
                 <Marker
-                  key={`cluster_${clusterId}`}
+                  key={`cluster_${clusterId}_${pointCount}`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
-                  style={{ width: clusterWidth + 16, height: 48, justifyContent: 'center', alignItems: 'center' }}
+                  style={{ width: clusterWidth + 32, height: 64, justifyContent: 'center', alignItems: 'center' }}
                 >
-                  <View style={[styles.clusterMarkerContainer, { minWidth: clusterWidth }]}>
-                    <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
-                    <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                  <View style={{ padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                    <View style={[styles.clusterMarkerContainer, { width: clusterWidth }]}>
+                      <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
+                      <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                    </View>
                   </View>
                 </Marker>
               );
@@ -1717,19 +1719,24 @@ export default function ContractorPortal({ onBack }) {
 
             return (
               <Marker
-                key={req.id || `marker_${Math.random()}`}
+                key={`marker_${req.id}_${isFocused ? 'focused' : 'normal'}`}
                 coordinate={{
                   latitude: parseFloat(req.coordinates.latitude),
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
                 onPress={() => handleMarkerPress(req)}
-                style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}
+                anchor={{ x: 0.5, y: 0.81 }}
+                style={{ width: 64, height: 64, justifyContent: 'center', alignItems: 'center' }}
               >
-                <View style={[
-                  styles.singleMarkerContainer,
-                  isFocused && styles.singleMarkerFocused
-                ]}>
-                  <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
+                <View style={{ padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                  <View style={[
+                    styles.singleMarkerPin,
+                    isFocused && styles.singleMarkerPinFocused
+                  ]}>
+                    <View style={styles.singleMarkerIconWrapper}>
+                      <Building size={12} color={isFocused ? '#FFFFFF' : '#1E293B'} />
+                    </View>
+                  </View>
                 </View>
               </Marker>
             );
@@ -2836,24 +2843,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FDC010',
   },
-  singleMarkerContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  singleMarkerPin: {
+    width: 28,
+    height: 28,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 0,
     backgroundColor: '#FDC010',
     borderWidth: 1.5,
     borderColor: '#1E293B',
+    transform: [{ rotate: '45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
   },
-  singleMarkerFocused: {
+  singleMarkerPinFocused: {
     backgroundColor: '#EF4444',
     borderColor: '#FFFFFF',
+  },
+  singleMarkerIconWrapper: {
+    transform: [{ rotate: '-45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mapInfoOverlay: {
     position: 'absolute',
