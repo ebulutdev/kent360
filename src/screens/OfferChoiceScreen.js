@@ -1008,7 +1008,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         <Text style={styles.sectionHeading}>Ana Değerleme Ayarları</Text>
 
         <View style={styles.controlRow}>
-          <Text style={styles.controlLabel}>Normal Kat Sayısı</Text>
+          <Text style={styles.controlLabel}>Yeni İmar Normal Kat İzni</Text>
           <View style={styles.stepperInputWrapper}>
             <TouchableOpacity style={styles.stepBtn} onPress={() => { triggerHaptic(); setNormalCount(prev => Math.max(1, prev - 1)); }}>
               <Text style={styles.stepBtnText}>-</Text>
@@ -1034,8 +1034,13 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         </View>
 
         {!isNoContractor && (
-          <View style={styles.controlRow}>
-            <Text style={styles.controlLabel}>Müteahhit Payı (%)</Text>
+          <View style={[styles.controlRow, { alignItems: 'center' }]}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={styles.controlLabel}>Müteahhit Payı (%)</Text>
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
+                Tahmini Karşılık: ~{normalArea > 0 ? (totals.contractorShareArea / normalArea).toFixed(1) : 0} Kat
+              </Text>
+            </View>
             <View style={styles.stepperInputWrapper}>
               <TouchableOpacity style={styles.stepBtn} onPress={() => adjustMutOrani(-5)}>
                 <Text style={styles.stepBtnText}>-</Text>
