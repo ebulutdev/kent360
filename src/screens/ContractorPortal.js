@@ -1699,19 +1699,17 @@ export default function ContractorPortal({ onBack }) {
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
                 >
-                  <View style={styles.clusterMarkerContainer}>
-                    <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
-                    <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                  <View style={{ padding: 6 }}>
+                    <View style={styles.clusterMarkerContainer}>
+                      <User size={14} color="#FDC010" style={{ marginRight: 4 }} />
+                      <Text style={styles.clusterMarkerText}>{pointCount}</Text>
+                    </View>
                   </View>
                 </Marker>
               );
             }
 
             const req = cluster.properties.request;
-            const breakdown = getRequestUnitBreakdown(req);
-            const title = req.buildingType === 'complex' ? 'Site Dönüşüm Projesi' : 'Apartman Dönüşüm Başvurusu';
-            const description = `${req.city}/${req.district} - ${req.buildingCount || 1} Blok, ${breakdown.daire} Daire`;
-
             const isFocused = (mapFocusCoordinate && 
               parseFloat(req.coordinates.latitude) === parseFloat(mapFocusCoordinate.latitude) && 
               parseFloat(req.coordinates.longitude) === parseFloat(mapFocusCoordinate.longitude)) ||
@@ -1724,11 +1722,17 @@ export default function ContractorPortal({ onBack }) {
                   latitude: parseFloat(req.coordinates.latitude),
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
-                title={title}
-                description={description}
-                pinColor={isFocused ? PORTAL_COLORS.danger : PORTAL_COLORS.accent}
                 onPress={() => handleMarkerPress(req)}
-              />
+              >
+                <View style={{ padding: 6 }}>
+                  <View style={[
+                    styles.singleMarkerContainer,
+                    isFocused && styles.singleMarkerFocused
+                  ]}>
+                    <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
+                  </View>
+                </View>
+              </Marker>
             );
           })}
         </MapView>
@@ -2832,6 +2836,25 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: 13,
     color: '#FDC010',
+  },
+  singleMarkerContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FDC010',
+    borderWidth: 1.5,
+    borderColor: '#1E293B',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  singleMarkerFocused: {
+    backgroundColor: '#EF4444',
+    borderColor: '#FFFFFF',
   },
   mapInfoOverlay: {
     position: 'absolute',
