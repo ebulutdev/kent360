@@ -1262,14 +1262,6 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 {renderQuestionControls()}
               </View>
 
-              {/* Onay Sorusu Banner'ı */}
-              {currentQuestionStep === STEPS.length - 1 && (
-                <View style={styles.finalQuestionBox}>
-                  <Text style={styles.finalQuestionText}>
-                    Oluşturduğunuz bina sizin binanız ile aynı mı? Onaylıyor musunuz?
-                  </Text>
-                </View>
-              )}
 
               {/* Devam Et / İleri Butonu */}
               <TouchableOpacity

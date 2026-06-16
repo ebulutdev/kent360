@@ -2027,10 +2027,11 @@ const styles = StyleSheet.create({
   },
   miniBuildingContainer: {
     width: '100%',
-    height: 130,
+    minHeight: 130,
     justifyContent: 'flex-end',
     alignItems: 'center',
     position: 'relative',
+    paddingTop: 10,
   },
   miniBuildingRoof: {
     width: 100,
