@@ -1701,7 +1701,7 @@ export default function ContractorPortal({ onBack }) {
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
                 >
-                  <View style={{ width: clusterWidth + 32, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                  <View style={{ width: 96, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
                     <View style={[styles.clusterMarkerContainer, { width: clusterWidth, paddingHorizontal: padHorizontal }]}>
                       <User size={12} color="#FDC010" style={{ marginRight: 3 }} />
                       <Text style={styles.clusterMarkerText} numberOfLines={1} ellipsizeMode="clip">{pointCount}</Text>
