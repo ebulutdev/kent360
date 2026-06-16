@@ -21,6 +21,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
+import Svg, { Path, Circle, Text as SvgText, Defs, Mask, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db, isMock } from '../../firebaseConfig';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
@@ -194,6 +195,120 @@ const cleanPayload = (val) => {
     return cleaned;
   }
   return val;
+};
+
+const CustomTeardropPin = ({ size = 36, isFocused = false, isCluster = false }) => {
+  const fillColor = isFocused ? '#EF4444' : '#F59E0B';
+  const strokeColor = isFocused ? '#B91C1C' : '#B45309';
+
+  if (isCluster) {
+    // Cluster version: double overlapping pins (SOLID layout matching the user's template)
+    const width = size * 1.28;  // 36 * 1.28 = 46px
+    const height = size * 1.39; // 36 * 1.39 = 50px
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={width} height={height} viewBox="0 0 42 46" style={{ position: 'absolute' }}>
+          <Defs>
+            {/* The mask is the solid body of the back pin */}
+            <Mask id="backPinMask">
+              <Path
+                d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+                fill="#FFFFFF"
+                transform="translate(13, 3)"
+              />
+            </Mask>
+          </Defs>
+
+          {/* Back pin shadow */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill="rgba(0, 0, 0, 0.12)"
+            transform="translate(14.5, 4.5)"
+          />
+          {/* Front pin shadow */}
+          <Path
+            d="M 12 29.5 C 6.5 21, 2 16.5 2 11 A 10 10 0 1 1 22 11 C 22 16.5 17.5 21, 12 29.5 Z"
+            fill="rgba(0, 0, 0, 0.15)"
+            transform="translate(3.5, 14.5)"
+          />
+          {/* Back pin body */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={0.8}
+            strokeLinejoin="round"
+            transform="translate(13, 3)"
+          />
+          {/* Back pin inner hole cutout (white center) */}
+          <Circle
+            cx="25"
+            cy="13"
+            r="4.5"
+            fill="#FFFFFF"
+          />
+
+          {/* Separation Mask: Front pin outline drawn in thick white, masked to ONLY show on top of the back pin body */}
+          <G mask="url(#backPinMask)">
+            <Path
+              d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth={3.2}
+              strokeLinejoin="round"
+              transform="translate(2, 13)"
+            />
+          </G>
+
+          {/* Front pin body - drawn with the exact same strokeColor and strokeWidth as the back pin */}
+          <Path
+            d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={0.8}
+            strokeLinejoin="round"
+            transform="translate(2, 13)"
+          />
+          {/* Front pin inner hole cutout (white center) */}
+          <Circle
+            cx="14"
+            cy="23"
+            r="4.5"
+            fill="#FFFFFF"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // Single marker version
+  return (
+    <View style={{ width: size, height: size * 1.25, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size * 1.25} viewBox="0 0 24 30" style={{ position: 'absolute' }}>
+        {/* Soft shadow for the pin */}
+        <Path
+          d="M 12 29.5 C 6.5 21, 2 16.5 2 11 A 10 10 0 1 1 22 11 C 22 16.5 17.5 21, 12 29.5 Z"
+          fill="rgba(0, 0, 0, 0.15)"
+          transform="translate(1.5, 1.5)"
+        />
+        {/* Pin body */}
+        <Path
+          d="M 12 28.5 C 6.5 20, 2 15.5 2 10 A 10 10 0 1 1 22 10 C 22 15.5 17.5 20, 12 28.5 Z"
+          fill={fillColor}
+          stroke={strokeColor}
+          strokeWidth={0.8}
+          strokeLinejoin="round"
+        />
+        {/* Inner white cutout hole */}
+        <Circle
+          cx="12"
+          cy="10"
+          r="4.5"
+          fill="#FFFFFF"
+        />
+      </Svg>
+    </View>
+  );
 };
 
 export default function ContractorPortal({ onBack }) {
@@ -1411,8 +1526,8 @@ export default function ContractorPortal({ onBack }) {
       mapRef.current.animateToRegion({
         latitude: 39.9334,
         longitude: 32.8597,
-        latitudeDelta: 7.5,
-        longitudeDelta: 7.5,
+        latitudeDelta: 8.5,
+        longitudeDelta: 12.0,
       }, 1000);
     }
   };
@@ -1421,7 +1536,8 @@ export default function ContractorPortal({ onBack }) {
     if (mapRef.current) {
       try {
         const expansionZoom = superclusterIndex.getClusterExpansionZoom(clusterId);
-        const newDelta = 360 / Math.pow(2, expansionZoom);
+        const targetZoom = Math.min(expansionZoom, 15);
+        const newDelta = 360 / Math.pow(2, targetZoom);
         mapRef.current.animateToRegion({
           latitude,
           longitude,
@@ -1429,14 +1545,14 @@ export default function ContractorPortal({ onBack }) {
           longitudeDelta: newDelta
         }, 800);
       } catch (e) {
-        if (mapRegion) {
-          mapRef.current.animateToRegion({
-            latitude,
-            longitude,
-            latitudeDelta: mapRegion.latitudeDelta / 2,
-            longitudeDelta: mapRegion.longitudeDelta / 2
-          }, 800);
-        }
+        const currentLatDelta = mapRegion ? mapRegion.latitudeDelta : 8.5;
+        const currentLngDelta = mapRegion ? mapRegion.longitudeDelta : 12.0;
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: currentLatDelta / 2.5,
+          longitudeDelta: currentLngDelta / 2.5
+        }, 800);
       }
     }
   };
@@ -1640,8 +1756,8 @@ export default function ContractorPortal({ onBack }) {
     } : {
       latitude: 39.9334,
       longitude: 32.8597,
-      latitudeDelta: 7.5,
-      longitudeDelta: 7.5,
+      latitudeDelta: 8.5,
+      longitudeDelta: 12.0,
     });
 
     const westLng = activeRegion.longitude - activeRegion.longitudeDelta / 2;
@@ -1655,6 +1771,14 @@ export default function ContractorPortal({ onBack }) {
     let clusters = [];
     try {
       clusters = superclusterIndex.getClusters(bbox, zoom);
+      console.log("LOG_SUPERCLUSTER: zoom =", zoom, "longitudeDelta =", activeRegion.longitudeDelta, "clustersCount =", clusters.length);
+      clusters.forEach((c, idx) => {
+        if (c.properties.cluster) {
+          console.log(`LOG_SUPERCLUSTER: - Cluster ${idx} at [${c.geometry.coordinates}], Count: ${c.properties.point_count}`);
+        } else {
+          console.log(`LOG_SUPERCLUSTER: - Single ${idx} for ${c.properties.request.district} at [${c.geometry.coordinates}]`);
+        }
+      });
     } catch (err) {
       console.warn("Supercluster getClusters error:", err);
     }
@@ -1676,32 +1800,32 @@ export default function ContractorPortal({ onBack }) {
           } : {
             latitude: 39.9334,
             longitude: 32.8597,
-            latitudeDelta: 7.5,
-            longitudeDelta: 7.5,
+            latitudeDelta: 8.5,
+            longitudeDelta: 12.0,
           }}
           onRegionChangeComplete={(region) => {
             setMapRegion(region);
           }}
-          onPress={() => setSelectedMapRequest(null)}
+          onPress={() => {
+            setSelectedMapRequest(null);
+            setMapFocusCoordinate(null);
+          }}
         >
           {clusters.map((cluster) => {
             const [longitude, latitude] = cluster.geometry.coordinates;
             const { cluster: isCluster, point_count: pointCount, cluster_id: clusterId } = cluster.properties;
 
             if (isCluster) {
-              const clusterWidth = pointCount > 99 ? 80 : (pointCount > 9 ? 64 : 56);
-              const padHorizontal = pointCount > 9 ? 8 : 6;
               return (
                 <Marker
-                  key={`cluster_${clusterId}_${pointCount}`}
+                  key={`cluster_${clusterId}_${pointCount}_v23`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
+                  anchor={{ x: 0.37, y: 0.83 }}
+                  style={{ width: 70, height: 70 }}
                 >
-                  <View style={{ width: 96, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
-                    <View style={[styles.clusterMarkerContainer, { width: clusterWidth, paddingHorizontal: padHorizontal }]}>
-                      <User size={12} color="#FDC010" style={{ marginRight: 3 }} />
-                      <Text style={styles.clusterMarkerText} numberOfLines={1} ellipsizeMode="clip">{pointCount}</Text>
-                    </View>
+                  <View style={{ width: 70, height: 70, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                    <CustomTeardropPin size={42} isFocused={false} isCluster={true} />
                   </View>
                 </Marker>
               );
@@ -1721,14 +1845,11 @@ export default function ContractorPortal({ onBack }) {
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
                 onPress={() => handleMarkerPress(req)}
+                anchor={{ x: 0.5, y: 0.93 }}
+                style={{ width: 60, height: 60 }}
               >
-                <View style={{ width: 52, height: 52, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
-                  <View style={[
-                    styles.singleMarkerContainer,
-                    isFocused && styles.singleMarkerFocused
-                  ]}>
-                    <Building size={14} color={isFocused ? '#FFFFFF' : '#1E293B'} />
-                  </View>
+                <View style={{ width: 60, height: 60, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                  <CustomTeardropPin size={42} isFocused={isFocused} />
                 </View>
               </Marker>
             );
@@ -1743,9 +1864,9 @@ export default function ContractorPortal({ onBack }) {
             activeOpacity={0.8}
           >
             {loadingGps ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color="#94A3B8" />
             ) : (
-              <Compass size={20} color="#FFFFFF" />
+              <Compass size={20} color="#94A3B8" />
             )}
           </TouchableOpacity>
 
@@ -1754,7 +1875,7 @@ export default function ContractorPortal({ onBack }) {
             onPress={handleResetMapZoom}
             activeOpacity={0.8}
           >
-            <Globe size={20} color="#FFFFFF" />
+            <Globe size={20} color="#94A3B8" />
           </TouchableOpacity>
         </View>
 
@@ -1788,7 +1909,10 @@ export default function ContractorPortal({ onBack }) {
                 </View>
                 <TouchableOpacity 
                   style={styles.closeMapCardBtn} 
-                  onPress={() => setSelectedMapRequest(null)}
+                  onPress={() => {
+                    setSelectedMapRequest(null);
+                    setMapFocusCoordinate(null);
+                  }}
                 >
                   <X size={18} color="#94A3B8" />
                 </TouchableOpacity>
@@ -1905,6 +2029,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('list');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -1917,6 +2042,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('map');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -1929,6 +2055,7 @@ export default function ContractorPortal({ onBack }) {
         onPress={() => {
           setActiveTab('profile');
           setSelectedMapRequest(null);
+          setMapFocusCoordinate(null);
         }}
         activeOpacity={0.7}
       >
@@ -2475,13 +2602,46 @@ export default function ContractorPortal({ onBack }) {
             {
               paddingTop: insets.top > 0 ? insets.top + 12 : 16,
               paddingBottom: 16
+            },
+            activeTab === 'map' && {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: 'transparent',
+              borderBottomWidth: 0,
+              zIndex: 1000,
+              elevation: 0,
+              shadowOpacity: 0,
             }
           ]}>
-            <TouchableOpacity style={styles.headerBackBtn} onPress={onBack}>
+            <TouchableOpacity 
+              style={[
+                styles.headerBackBtn,
+                activeTab === 'map' && styles.floatingHeaderBtn
+              ]} 
+              onPress={onBack}
+            >
               <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
-            <Text style={styles.portalHeaderTitle}>{activeTab === 'map' ? currentLocationName : 'Müteahhit Portalı'}</Text>
-            <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
+            
+            {activeTab === 'map' ? (
+              <View style={styles.floatingHeaderTitleContainer}>
+                <Text style={styles.floatingHeaderTitleText} numberOfLines={1}>{currentLocationName}</Text>
+              </View>
+            ) : (
+              <Text style={styles.portalHeaderTitle}>
+                {activeTab === 'list' ? 'Müteahhit Portalı' : 'Profil'}
+              </Text>
+            )}
+
+            <TouchableOpacity 
+              style={[
+                styles.headerLogoutBtn,
+                activeTab === 'map' && styles.floatingHeaderBtn
+              ]} 
+              onPress={handleLogout}
+            >
               <LogOut size={18} color={COLORS.danger} />
             </TouchableOpacity>
           </View>
@@ -2858,7 +3018,7 @@ const styles = StyleSheet.create({
   },
   mapInfoOverlay: {
     position: 'absolute',
-    top: 80,
+    top: 130,
     alignSelf: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
@@ -3054,7 +3214,7 @@ const styles = StyleSheet.create({
   mapControlsContainer: {
     position: 'absolute',
     right: 16,
-    top: 80,
+    top: 130,
     flexDirection: 'column',
     gap: 12,
     zIndex: 1500,
@@ -3490,6 +3650,40 @@ const styles = StyleSheet.create({
     color: PORTAL_COLORS.buttonText,
     fontFamily: FONTS.bold,
     fontSize: 13,
+  },
+  floatingHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    padding: 0,
+  },
+  floatingHeaderTitleContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+    maxWidth: 200,
+  },
+  floatingHeaderTitleText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: PORTAL_COLORS.textTitle,
   },
 });
 
