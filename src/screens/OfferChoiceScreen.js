@@ -374,7 +374,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
     const roofCostTotal = totalRoofArea * (normalCost * (roofCostRatio / 100)); // Dynamic Weighted Roof cost
     const totalCost = normalCostTotal + bodrumCostTotal + roofCostTotal;
 
-    const isNoContractor = data.mutType === 'MÜT YOK';
+    const isNoContractor = data.contractorFlatCount === 0;
     const activeMutOrani = isNoContractor ? 0 : mutOrani;
 
     const contractorShareArea = totalArea * (activeMutOrani / 100);
@@ -400,7 +400,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
       contractorROI,
       landownerSalesValue
     };
-  }, [normalCount, normalArea, bodrumCount, bodrumArea, hasRoof, roofArea, normalCost, bodrumCost, mutOrani, roofCostRatio, regionSalesPrice, data.mutType]);
+  }, [normalCount, normalArea, bodrumCount, bodrumArea, hasRoof, roofArea, normalCost, bodrumCost, mutOrani, roofCostRatio, regionSalesPrice, data.contractorFlatCount]);
 
   // Auto-synchronize edits back to the main wizard context
   useEffect(() => {
@@ -427,7 +427,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         landownerSalesValue: totals.landownerSalesValue,
       }
     });
-  }, [normalCount, bodrumCount, hasRoof, normalArea, bodrumArea, roofArea, normalCost, bodrumCost, mutOrani, roofCostRatio, regionSalesPrice, totals, data.mutType]);
+  }, [normalCount, bodrumCount, hasRoof, normalArea, bodrumArea, roofArea, normalCost, bodrumCost, mutOrani, roofCostRatio, regionSalesPrice, totals, data.contractorFlatCount]);
 
   // Bottom sheet modal controller
   useEffect(() => {
@@ -577,7 +577,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
   // VIEW B: DETAILED VALUATION CALCULATOR (PDF FORMAT)
   // ----------------------------------------------------
   const renderCalculatorView = () => {
-    const isNoContractor = data.mutType === 'MÜT YOK';
+    const isNoContractor = data.contractorFlatCount === 0;
     const facades = data.facades || {
       top: { type: 'bahce', name: 'ORTAK BAHÇE', distance: '28m' },
       bottom: { type: 'yol', name: 'DEDE KORKUT SK.', distance: '' },

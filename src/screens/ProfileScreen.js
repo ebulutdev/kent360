@@ -73,7 +73,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const [adaNo, setAdaNo] = useState(data.adaNo || firstDeed?.ada || '102');
   const [parselNo, setParselNo] = useState(data.parselNo || firstDeed?.parsel || '15');
   const [floorsCount, setFloorsCount] = useState(data.floorsCount || firstFloorCount || 1);
-  const [mutType, setMutType] = useState(data.mutType || 'MÜT YOK');
+  const [contractorFlatCount, setContractorFlatCount] = useState(data.contractorFlatCount || 0);
   const [isMansart, setIsMansart] = useState(
     data.isMansart !== undefined ? data.isMansart : (hasMansartRoof || false)
   );
@@ -106,7 +106,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const hasInitialized = useRef(false);
   useEffect(() => {
     if (hasInitialized.current) return;
-    if (data.mutType) setMutType(data.mutType);
+    if (data.contractorFlatCount !== undefined) setContractorFlatCount(data.contractorFlatCount);
     if (data.width) {
       setBuildingWidth(data.width);
       setLocalWidth(String(data.width));
@@ -186,7 +186,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
         adaNo,
         parselNo,
         floorsCount,
-        mutType,
+        contractorFlatCount,
         isMansart,
         width: buildingWidth,
         depth: buildingDepth,
@@ -236,9 +236,9 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       direction: 'right'
     },
     {
-      title: 'Hesaplama Tipi',
-      question: 'Projenizde müteahhit payı hesaplama modelini seçiniz.',
-      key: 'mutType'
+      title: 'Müteahhit Payı',
+      question: 'Bu projede müteahhite kalacak (verilecek) daire sayısı nedir?',
+      key: 'contractorFlatCount'
     },
     {
       title: 'Onay ve Kontrol',
@@ -251,10 +251,10 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     triggerHaptic();
     const next = currentQuestionStep + 1;
     if (next < STEPS.length) {
-      if (STEPS[currentQuestionStep].key === 'mutType' && mutType === 'MÜT YOK') {
+      if (STEPS[currentQuestionStep].key === 'contractorFlatCount' && contractorFlatCount === 0) {
         Alert.alert(
           'Müteahhit Pay Durumu',
-          'Müteahhite pay vermiyorsunuz, emin misiniz?',
+          'Müteahhite pay (daire) vermiyorsunuz, emin misiniz?',
           [
             { text: 'Hayır', style: 'cancel' },
             { text: 'Evet', onPress: () => setCurrentQuestionStep(next) }
@@ -517,32 +517,31 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
     }
 
     switch (activeStep.key) {
-      case 'mutType':
+      case 'contractorFlatCount':
         return (
-          <View style={styles.optionsGrid}>
-            {[
-              { type: 'MÜT D', label: 'MÜT D (Daire Payı)', desc: 'Müteahhide verilecek bağımsız bölüm daire adedini temel alır.' },
-              { type: 'MÜT P', label: 'MÜT P (Pay Oranı %)', desc: 'Müteahhit inşaat alanı paylaşım yüzdesini (%) temel alır.' },
-              { type: 'MÜT YOK', label: 'MÜT YOK (Paysız)', desc: 'Müteahhit payı olmadığını belirtir. Proje malikler tarafından karşılanır.' }
-            ].map(opt => (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>MÜTEAHHİTE KALACAK DAİRE</Text>
+            <View style={styles.counterControls}>
               <TouchableOpacity
-                key={opt.type}
-                style={[
-                  styles.optionButton,
-                  mutType === opt.type && styles.optionButtonActive
-                ]}
-                onPress={() => setMutType(opt.type)}
-                activeOpacity={0.8}
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setContractorFlatCount(prev => Math.max(0, prev - 1));
+                }}
               >
-                <Text style={[
-                  styles.optionButtonText,
-                  mutType === opt.type && styles.optionButtonTextActive
-                ]}>
-                  {opt.label}
-                </Text>
-                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+                <Minus size={20} color="#FFFFFF" />
               </TouchableOpacity>
-            ))}
+              <Text style={styles.counterValue}>{contractorFlatCount}</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  setContractorFlatCount(prev => Math.min(200, prev + 1));
+                }}
+              >
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
         );
 
@@ -627,8 +626,8 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 <Text style={styles.summaryValueText}>{adaNo} / {parselNo}</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabelText}>Hesaplama Tipi:</Text>
-                <Text style={styles.summaryValueText}>{mutType}</Text>
+                <Text style={styles.summaryLabelText}>Müteahhit Payı:</Text>
+                <Text style={styles.summaryValueText}>{contractorFlatCount} Daire</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Bina Ölçüleri:</Text>
@@ -751,7 +750,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                       <Text style={styles.subText}>
                         {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
                       </Text>
-                      <Text style={styles.subTextMuted}>Hesap Tipi: {mutType}</Text>
+                      <Text style={styles.subTextMuted}>Müteahhit Payı: {contractorFlatCount} Daire</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
