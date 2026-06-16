@@ -32,7 +32,7 @@ try {
     auth = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
-    db = getFirestore(app);
+    db = getFirestore(app, 'default');
   }
 } catch (error) {
   console.warn("⚠️ Kent360: Firebase başlatılırken hata oluştu, mock moduna geçiliyor:", error);
