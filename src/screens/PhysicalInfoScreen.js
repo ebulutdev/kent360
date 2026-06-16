@@ -84,6 +84,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   }, [count, isComplex, isMulti]);
 
   // Questionnaire States
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
+  const [savedBlocks, setSavedBlocks] = useState({});
   const [currentQuestionStep, setCurrentQuestionStep] = useState(0);
   const [roofType, setRoofType] = useState('normal'); // 'normal', 'mansart', 'none'
   const [hasAttic, setAttic] = useState(false);
@@ -95,15 +97,21 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const [basementTypes, setBasementTypes] = useState({});
   const [basementUnitCounts, setBasementUnitCounts] = useState({});
   const defaultSqm = data.width && data.depth ? Math.round(data.width * data.depth) : 120;
-  const [averageSqm, setAverageSqm] = useState(defaultSqm);
+  const [footprintSqm, setFootprintSqm] = useState(defaultSqm);
+  const [normalFloorSqm, setNormalFloorSqm] = useState(defaultSqm);
 
-  // Restore state from previously saved data on mount
+  // Restore state from previously saved data on mount or block change
   useEffect(() => {
-    const activeKey = blockKeys[0]?.key || 'single';
-    const existingStructure = data.buildingStructures?.[activeKey];
+    const activeKey = blockKeys[currentBlockIndex]?.key || 'single';
+    const existingStructure = savedBlocks[activeKey] || data.buildingStructures?.[activeKey];
     if (existingStructure) {
       if (existingStructure.roofType) setRoofType(existingStructure.roofType);
-      if (existingStructure.averageSqm) setAverageSqm(existingStructure.averageSqm);
+      if (existingStructure.footprintSqm) setFootprintSqm(existingStructure.footprintSqm);
+      if (existingStructure.normalFloorSqm) setNormalFloorSqm(existingStructure.normalFloorSqm);
+      else if (existingStructure.averageSqm) {
+        setFootprintSqm(existingStructure.averageSqm);
+        setNormalFloorSqm(existingStructure.averageSqm);
+      }
 
       const floors = existingStructure.floors || [];
 
@@ -163,8 +171,21 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       } else {
         setBasementCount(0);
       }
+    } else {
+       // Herhangi bir veri yoksa (yeni binaya geçiş yaptıysa) varsayılanlara sıfırla
+       setRoofType('normal');
+       setAttic(false);
+       setNormalFloorCount(3);
+       setFlatsPerFloor({ 1: 2, 2: 2, 3: 2 });
+       setGroundUnitCount(2);
+       setGroundUnitTypes({});
+       setBasementCount(0);
+       setBasementTypes({});
+       setBasementUnitCounts({});
+       setFootprintSqm(defaultSqm);
+       setNormalFloorSqm(defaultSqm);
     }
-  }, []);
+  }, [currentBlockIndex, blockKeys, data.buildingStructures, savedBlocks]);
 
   // Sync flatsPerFloor keys dynamically with normalFloorCount
   useEffect(() => {
@@ -286,7 +307,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
     return {
       roofType: roofType,
-      averageSqm: averageSqm,
+      footprintSqm: footprintSqm,
+      normalFloorSqm: normalFloorSqm,
       floors: floors
     };
   }, [
@@ -299,7 +321,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     basementCount,
     basementTypes,
     basementUnitCounts,
-    averageSqm
+    footprintSqm,
+    normalFloorSqm
   ]);
 
   // Step definition array
@@ -311,6 +334,20 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         key: 'normalFloorCount'
       }
     ];
+
+    // Oturum Alanı
+    steps.push({
+      title: 'Zemin Oturumu (Taban Alanı)',
+      question: 'Mevcut binanızın tabanı arsada tahmini kaç m² yer kaplıyor?',
+      key: 'footprintSqm'
+    });
+
+    // Normal Kat Alanı
+    steps.push({
+      title: 'Normal Kat Büyüklüğü',
+      question: 'Zemin katın üstündeki normal bir kat toplamda ortalama kaç m² büyüklüğünde?',
+      key: 'normalFloorSqm'
+    });
 
     // Dynamic steps for each normal floor from 1st to Nth floor
     for (let i = 1; i <= normalFloorCount; i++) {
@@ -397,7 +434,13 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     if (prev >= 0) {
       setCurrentQuestionStep(prev);
     } else {
-      onBack(); // Go back to the previous screen of the main wizard
+      if (currentBlockIndex > 0) {
+        // Önceki binaya dön
+        setCurrentBlockIndex(currentBlockIndex - 1);
+        setCurrentQuestionStep(0); // Önceki binanın ilk sorusundan (veya son sorusundan) başlat
+      } else {
+        onBack(); // Go back to the previous screen of the main wizard
+      }
     }
   };
 
@@ -407,15 +450,30 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     // Build the final structures block matching computedBlockData
     const singleStructure = {
       roofType: roofType,
-      averageSqm: averageSqm,
+      footprintSqm: footprintSqm,
+      normalFloorSqm: normalFloorSqm,
+      averageSqm: normalFloorSqm, // Geriye dönük uyumluluk için
       floors: computedBlockData.floors
     };
 
-    const finalBlocksData = {};
-    // Populate all blocks in the project
-    blockKeys.forEach(bk => {
-      finalBlocksData[bk.key] = singleStructure;
-    });
+    const activeKey = blockKeys[currentBlockIndex]?.key || 'single';
+    
+    // O anki bloğu savedBlocks state'ine kaydet
+    const updatedSavedBlocks = {
+      ...savedBlocks,
+      [activeKey]: singleStructure
+    };
+    setSavedBlocks(updatedSavedBlocks);
+
+    // Eğer sırada başka blok/bina varsa ona geç
+    if (currentBlockIndex < blockKeys.length - 1) {
+      setCurrentBlockIndex(currentBlockIndex + 1);
+      setCurrentQuestionStep(0); // Yeni blok için ilk sorudan başlat
+      return;
+    }
+
+    // Eğer tüm bloklar/binalar bittiyse tüm verileri ana state'e kaydet
+    const finalBlocksData = updatedSavedBlocks;
 
     const finalFloors = {};
     const finalFlats = {};
@@ -438,13 +496,15 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       });
       finalFlats[key] = flatCount;
 
-      finalSqm[key] = block.averageSqm;
+      finalSqm[key] = block.normalFloorSqm || block.averageSqm;
     });
 
     updateData({
       floors: finalFloors,
       flats: finalFlats,
       sqm: finalSqm,
+      footprintSqm: footprintSqm,
+      normalFloorSqm: normalFloorSqm,
       buildingStructures: finalBlocksData,
       isMansart: hasAnyMansart
     });
@@ -724,7 +784,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       case 'normalFloorCount':
         return (
           <View style={styles.counterWrapper}>
-            <Text style={styles.counterSubLabel}>KAT SAYISI</Text>
+            <Text style={styles.counterSubLabel}>NORMAL KAT SAYISI</Text>
             <View style={styles.counterControls}>
               <TouchableOpacity
                 style={styles.counterBtn}
@@ -735,7 +795,51 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               <Text style={styles.counterValue}>{normalFloorCount}</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
-                onPress={() => setNormalFloorCount(prev => Math.min(15, prev + 1))}
+                onPress={() => setNormalFloorCount(prev => Math.min(20, prev + 1))}
+              >
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      case 'footprintSqm':
+        return (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>ZEMİN OTURUMU (m²)</Text>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.max(20, prev - 5)); }}
+              >
+                <Minus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.counterValue}>{footprintSqm} m²</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.min(2000, prev + 5)); }}
+              >
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      case 'normalFloorSqm':
+        return (
+          <View style={styles.counterWrapper}>
+            <Text style={styles.counterSubLabel}>ORTALAMA NORMAL KAT (m²)</Text>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.max(20, prev - 5)); }}
+              >
+                <Minus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.counterValue}>{normalFloorSqm} m²</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.min(2000, prev + 5)); }}
               >
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -859,6 +963,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 <Text style={styles.summaryLabelText}>Normal Kat Sayısı:</Text>
                 <Text style={styles.summaryValueText}>{normalFloorCount} Kat</Text>
               </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Zemin Oturumu:</Text>
+                <Text style={styles.summaryValueText}>{footprintSqm} m²</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabelText}>Normal Kat Büyüklüğü:</Text>
+                <Text style={styles.summaryValueText}>{normalFloorSqm} m²</Text>
+              </View>
               <View style={[styles.summaryItem, { flexDirection: 'column', alignItems: 'flex-start' }]}>
                 <Text style={styles.summaryLabelText}>Zemin Kat Yapısı:</Text>
                 {Array.from({ length: groundUnitCount }).map((_, idx) => {
@@ -932,7 +1044,9 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
             {/* 1. BİNA ÖNİZLEME KARTI */}
             <View style={[globalStyles.glassCard, styles.previewGlassCard]}>
-              <Text style={styles.previewCardTitle}>BİNA MODELİ ÖNİZLEME</Text>
+              <Text style={styles.previewCardTitle}>
+                {blockKeys.length > 1 ? `${blockKeys[currentBlockIndex]?.label.toUpperCase()} MODEL ÖNİZLEME` : 'BİNA MODELİ ÖNİZLEME'}
+              </Text>
 
               <View style={styles.buildingWrapper}>
                 {/* Çatı */}
@@ -1046,7 +1160,9 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
 
             {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
             <View style={globalStyles.glassCard}>
-              <Text style={styles.stepTitle}>BİNA TASARIMI</Text>
+              <Text style={styles.stepTitle}>
+                {blockKeys.length > 1 ? `${blockKeys[currentBlockIndex]?.label.toUpperCase()} TASARIMI` : 'BİNA TASARIMI'}
+              </Text>
 
               <View style={styles.questionHeaderRow}>
                 <Text style={styles.questionTitleText}>{STEPS[currentQuestionStep]?.title}</Text>
