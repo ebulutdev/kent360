@@ -94,10 +94,10 @@ const getNearestLocationName = (lat, lng, longitudeDelta) => {
   if (longitudeDelta > 2.5) {
     return 'Türkiye';
   }
-  
+
   let closestCity = 'İstanbul';
   let minCityDist = Infinity;
-  
+
   Object.keys(COORDINATES).forEach(cityName => {
     const city = COORDINATES[cityName];
     const dist = getDistance(lat, lng, city.latitude, city.longitude);
@@ -109,7 +109,7 @@ const getNearestLocationName = (lat, lng, longitudeDelta) => {
 
   let closestDistrict = '';
   let minDistrictDist = Infinity;
-  
+
   const cityDistricts = COORDINATES[closestCity];
   Object.keys(cityDistricts).forEach(key => {
     if (key !== 'latitude' && key !== 'longitude') {
@@ -121,12 +121,12 @@ const getNearestLocationName = (lat, lng, longitudeDelta) => {
       }
     }
   });
-  
+
   // Only return district if it's reasonably close
   if (minDistrictDist < 0.02) {
     return closestDistrict;
   }
-  
+
   return closestCity;
 };
 
@@ -343,7 +343,7 @@ export default function ContractorPortal({ onBack }) {
       radius: 60,
       maxZoom: 16
     });
-    
+
     const points = mapRequests.map(req => ({
       type: 'Feature',
       properties: {
@@ -356,7 +356,7 @@ export default function ContractorPortal({ onBack }) {
         coordinates: [parseFloat(req.coordinates.longitude), parseFloat(req.coordinates.latitude)]
       }
     }));
-    
+
     index.load(points);
     return index;
   }, [mapRequests]);
@@ -403,7 +403,7 @@ export default function ContractorPortal({ onBack }) {
       setUser(currUser);
       if (currUser) {
         setLoadingRequests(true);
-        
+
         const loadInitialData = async () => {
           let localSubmissions = [];
           try {
@@ -591,7 +591,7 @@ export default function ContractorPortal({ onBack }) {
 
             // Listen to submissions in real time, sorted by newest first
             const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
-            
+
             // 4-second timeout to dismiss loading state and show local data if Firestore hangs
             const loadTimeout = setTimeout(() => {
               console.warn("Firestore snapshot listener timed out, showing local data");
@@ -737,7 +737,7 @@ export default function ContractorPortal({ onBack }) {
             return;
           }
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          
+
           const defaultProfile = {
             companyName: companyName.trim(),
             email: email.trim(),
@@ -866,11 +866,11 @@ export default function ContractorPortal({ onBack }) {
             roofType: 'normal',
             averageSqm: 110,
             floors: [
-              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u1'}, {type:'daire', name:'Daire', id:'u2'}] },
-              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u3'}, {type:'daire', name:'Daire', id:'u4'}] },
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u5'}, {type:'daire', name:'Daire', id:'u6'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'u7'}, {type:'daire', name:'Daire', id:'u8'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'u9'}, {type:'daire', name:'Daire', id:'u10'}] }
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'u1' }, { type: 'daire', name: 'Daire', id: 'u2' }] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'u3' }, { type: 'daire', name: 'Daire', id: 'u4' }] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'u5' }, { type: 'daire', name: 'Daire', id: 'u6' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'u7' }, { type: 'daire', name: 'Daire', id: 'u8' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'dukkan', name: 'Dükkan', id: 'u9' }, { type: 'daire', name: 'Daire', id: 'u10' }] }
             ]
           }
         }
@@ -903,29 +903,29 @@ export default function ContractorPortal({ onBack }) {
             roofType: 'mansart',
             averageSqm: 120,
             floors: [
-              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a1'}, {type:'daire', name:'Daire', id:'a2'}] },
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a3'}, {type:'daire', name:'Daire', id:'a4'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'a5'}, {type:'daire', name:'Daire', id:'a6'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'a7'}, {type:'daire', name:'Daire', id:'a8'}] }
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'a1' }, { type: 'daire', name: 'Daire', id: 'a2' }] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'a3' }, { type: 'daire', name: 'Daire', id: 'a4' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'a5' }, { type: 'daire', name: 'Daire', id: 'a6' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'daire', name: 'Daire', id: 'a7' }, { type: 'daire', name: 'Daire', id: 'a8' }] }
             ]
           },
           B: {
             roofType: 'normal',
             averageSqm: 120,
             floors: [
-              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b1'}, {type:'daire', name:'Daire', id:'b2'}] },
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b3'}, {type:'daire', name:'Daire', id:'b4'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'b5'}, {type:'daire', name:'Daire', id:'b6'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'b7'}, {type:'daire', name:'Daire', id:'b8'}] }
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'b1' }, { type: 'daire', name: 'Daire', id: 'b2' }] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'b3' }, { type: 'daire', name: 'Daire', id: 'b4' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'b5' }, { type: 'daire', name: 'Daire', id: 'b6' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'daire', name: 'Daire', id: 'b7' }, { type: 'daire', name: 'Daire', id: 'b8' }] }
             ]
           },
           C: {
             roofType: 'normal',
             averageSqm: 100,
             floors: [
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'c1'}, {type:'daire', name:'Daire', id:'c2'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'c3'}, {type:'daire', name:'Daire', id:'c4'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'daire', name:'Daire', id:'c5'}, {type:'daire', name:'Daire', id:'c6'}] }
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'c1' }, { type: 'daire', name: 'Daire', id: 'c2' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'c3' }, { type: 'daire', name: 'Daire', id: 'c4' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'daire', name: 'Daire', id: 'c5' }, { type: 'daire', name: 'Daire', id: 'c6' }] }
             ]
           }
         }
@@ -956,24 +956,24 @@ export default function ContractorPortal({ onBack }) {
             roofType: 'normal',
             averageSqm: 115,
             floors: [
-              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d1'}, {type:'daire', name:'Daire', id:'d2'}] },
-              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d3'}, {type:'daire', name:'Daire', id:'d4'}] },
-              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d5'}, {type:'daire', name:'Daire', id:'d6'}] },
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d7'}, {type:'daire', name:'Daire', id:'d8'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'d9'}, {type:'daire', name:'Daire', id:'d10'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'d11'}, {type:'daire', name:'Daire', id:'d12'}] }
+              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'd1' }, { type: 'daire', name: 'Daire', id: 'd2' }] },
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'd3' }, { type: 'daire', name: 'Daire', id: 'd4' }] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'd5' }, { type: 'daire', name: 'Daire', id: 'd6' }] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'd7' }, { type: 'daire', name: 'Daire', id: 'd8' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'd9' }, { type: 'daire', name: 'Daire', id: 'd10' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'dukkan', name: 'Dükkan', id: 'd11' }, { type: 'daire', name: 'Daire', id: 'd12' }] }
             ]
           },
           building_2: {
             roofType: 'normal',
             averageSqm: 115,
             floors: [
-              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e1'}, {type:'daire', name:'Daire', id:'e2'}] },
-              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e3'}, {type:'daire', name:'Daire', id:'e4'}] },
-              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e5'}, {type:'daire', name:'Daire', id:'e6'}] },
-              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e7'}, {type:'daire', name:'Daire', id:'e8'}] },
-              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{type:'daire', name:'Daire', id:'e9'}, {type:'daire', name:'Daire', id:'e10'}] },
-              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{type:'dukkan', name:'Dükkan', id:'e11'}, {type:'daire', name:'Daire', id:'e12'}] }
+              { key: 'normal_5', label: '5. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'e1' }, { type: 'daire', name: 'Daire', id: 'e2' }] },
+              { key: 'normal_4', label: '4. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'e3' }, { type: 'daire', name: 'Daire', id: 'e4' }] },
+              { key: 'normal_3', label: '3. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'e5' }, { type: 'daire', name: 'Daire', id: 'e6' }] },
+              { key: 'normal_2', label: '2. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'e7' }, { type: 'daire', name: 'Daire', id: 'e8' }] },
+              { key: 'normal_1', label: '1. Kat', type: 'normal', units: [{ type: 'daire', name: 'Daire', id: 'e9' }, { type: 'daire', name: 'Daire', id: 'e10' }] },
+              { key: 'ground', label: 'Zemin Kat', type: 'ground', units: [{ type: 'dukkan', name: 'Dükkan', id: 'e11' }, { type: 'daire', name: 'Daire', id: 'e12' }] }
             ]
           }
         }
@@ -1223,7 +1223,7 @@ export default function ContractorPortal({ onBack }) {
             where('contractorId', '==', user.uid)
           );
           const existSnap = await getDocs(qExist);
-          
+
           if (!existSnap.empty) {
             const bidDocId = existSnap.docs[0].id;
             const docRef = doc(db, 'offers', bidDocId);
@@ -1262,7 +1262,7 @@ export default function ContractorPortal({ onBack }) {
           Alert.alert('Başarılı', 'Teklifiniz veritabanına kaydedildi ve malike iletildi.');
         } catch (writeErr) {
           console.warn("Bid save to Firestore timed out or failed, saving locally:", writeErr);
-          
+
           newBid.id = 'bid_local_' + Math.random().toString(36).substring(7);
           const filteredBids = myBids.filter(b => b.submissionId !== selectedRequestForBid.id);
           const updatedBids = [newBid, ...filteredBids];
@@ -1307,7 +1307,7 @@ export default function ContractorPortal({ onBack }) {
   const handleToggleLike = async (project) => {
     const isLiked = !project.likedByMe;
     const newLikes = isLiked ? project.likes + 1 : Math.max(0, project.likes - 1);
-    
+
     const updatedProjects = contractorProjects.map(p => {
       if (p.id === project.id) {
         return { ...p, likedByMe: isLiked, likes: newLikes };
@@ -1315,7 +1315,7 @@ export default function ContractorPortal({ onBack }) {
       return p;
     });
     setContractorProjects(updatedProjects);
-    
+
     if (selectedProject && selectedProject.id === project.id) {
       setSelectedProject(prev => ({ ...prev, likedByMe: isLiked, likes: newLikes }));
     }
@@ -1414,7 +1414,7 @@ export default function ContractorPortal({ onBack }) {
     let dukkan = 0;
     let depo = 0;
     let siginak = 0;
-    
+
     if (item.buildingStructures) {
       Object.keys(item.buildingStructures).forEach(blockKey => {
         const block = item.buildingStructures[blockKey];
@@ -1435,7 +1435,7 @@ export default function ContractorPortal({ onBack }) {
     } else {
       daire = item.flats ? Object.values(item.flats).reduce((acc, curr) => acc + parseInt(curr || 0), 0) : 0;
     }
-    
+
     return { daire, dukkan, depo, siginak };
   };
 
@@ -1486,11 +1486,11 @@ export default function ContractorPortal({ onBack }) {
         setLoadingGps(false);
         return;
       }
-      
+
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      
+
       const coords = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -1598,11 +1598,11 @@ export default function ContractorPortal({ onBack }) {
                     {item.createdAt ? new Date(item.createdAt).toLocaleDateString('tr-TR') : '-'}
                   </Text>
                 </View>
-                
+
                 <Text style={styles.reqTitle}>
                   {item.buildingType === 'complex' ? 'Site Dönüşüm Projesi' : 'Apartman Dönüşüm Başvurusu'}
                 </Text>
-                
+
                 <View style={styles.reqDetails}>
                   <Text style={styles.reqDetailText}>Blok/Bina: {item.buildingCount || 1}</Text>
                   <Text style={styles.reqDetailText}>Daire: {breakdown.daire}</Text>
@@ -1615,7 +1615,7 @@ export default function ContractorPortal({ onBack }) {
                 {isExpanded && (
                   <View style={styles.expandedSection}>
                     <View style={styles.divider} />
-                    
+
                     <Text style={styles.expandedSectionTitle}>İLETİŞİM BİLGİLERİ</Text>
                     <View style={styles.detailRow}>
                       <View style={{ flex: 1 }}>
@@ -1635,7 +1635,7 @@ export default function ContractorPortal({ onBack }) {
                     <View style={styles.divider} />
 
                     <Text style={styles.expandedSectionTitle}>YAPI & ARSA BİLGİLERİ</Text>
-                    
+
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Ada / Parsel Bilgisi:</Text>
                       <Text style={styles.detailValue}>{formatDeeds(item.deeds)}</Text>
@@ -1732,7 +1732,7 @@ export default function ContractorPortal({ onBack }) {
               <Building size={48} color="#64748B" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyRequestsText}>Aktif dönüşüm talebi bulunamadı.</Text>
               <Text style={styles.emptyRequestsSub}>Müteahhit portalını test etmek için örnek talepleri yükleyebilirsiniz.</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.seedRequestsBtn}
                 onPress={handleSeedRequests}
                 activeOpacity={0.8}
@@ -1767,7 +1767,7 @@ export default function ContractorPortal({ onBack }) {
     const bbox = [westLng, southLat, eastLng, northLat];
 
     const zoom = Math.max(0, Math.min(19, Math.round(Math.log2(360 / activeRegion.longitudeDelta))));
-    
+
     let clusters = [];
     try {
       clusters = superclusterIndex.getClusters(bbox, zoom);
@@ -1821,19 +1821,19 @@ export default function ContractorPortal({ onBack }) {
                   key={`cluster_${clusterId}_${pointCount}_v23`}
                   coordinate={{ latitude, longitude }}
                   onPress={() => handleClusterPress(clusterId, latitude, longitude)}
-                  anchor={{ x: 0.37, y: 0.83 }}
-                  style={{ width: 70, height: 70 }}
+                  anchor={{ x: 0.33, y: 0.90 }}
+                  style={{ width: 46, height: 50 }}
                 >
-                  <View style={{ width: 70, height: 70, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
-                    <CustomTeardropPin size={42} isFocused={false} isCluster={true} />
+                  <View style={{ width: 46, height: 50, backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                    <CustomTeardropPin size={36} isFocused={false} isCluster={true} />
                   </View>
                 </Marker>
               );
             }
 
             const req = cluster.properties.request;
-            const isFocused = (mapFocusCoordinate && 
-              parseFloat(req.coordinates.latitude) === parseFloat(mapFocusCoordinate.latitude) && 
+            const isFocused = (mapFocusCoordinate &&
+              parseFloat(req.coordinates.latitude) === parseFloat(mapFocusCoordinate.latitude) &&
               parseFloat(req.coordinates.longitude) === parseFloat(mapFocusCoordinate.longitude)) ||
               (selectedMapRequest && selectedMapRequest.id === req.id);
 
@@ -1845,11 +1845,11 @@ export default function ContractorPortal({ onBack }) {
                   longitude: parseFloat(req.coordinates.longitude),
                 }}
                 onPress={() => handleMarkerPress(req)}
-                anchor={{ x: 0.5, y: 0.93 }}
-                style={{ width: 60, height: 60 }}
+                anchor={{ x: 0.5, y: 1.0 }}
+                style={{ width: 36, height: 45 }}
               >
-                <View style={{ width: 60, height: 60, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
-                  <CustomTeardropPin size={42} isFocused={isFocused} />
+                <View style={{ width: 36, height: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.01)' }} pointerEvents="none">
+                  <CustomTeardropPin size={36} isFocused={isFocused} />
                 </View>
               </Marker>
             );
@@ -1858,8 +1858,8 @@ export default function ContractorPortal({ onBack }) {
 
         {/* Floating Map Controls */}
         <View style={styles.mapControlsContainer}>
-          <TouchableOpacity 
-            style={styles.mapControlBtn} 
+          <TouchableOpacity
+            style={styles.mapControlBtn}
             onPress={handleGoToMyLocation}
             activeOpacity={0.8}
           >
@@ -1870,8 +1870,8 @@ export default function ContractorPortal({ onBack }) {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.mapControlBtn} 
+          <TouchableOpacity
+            style={styles.mapControlBtn}
             onPress={handleResetMapZoom}
             activeOpacity={0.8}
           >
@@ -1907,8 +1907,8 @@ export default function ContractorPortal({ onBack }) {
                     {selectedMapRequest.city} / {selectedMapRequest.district}
                   </Text>
                 </View>
-                <TouchableOpacity 
-                  style={styles.closeMapCardBtn} 
+                <TouchableOpacity
+                  style={styles.closeMapCardBtn}
                   onPress={() => {
                     setSelectedMapRequest(null);
                     setMapFocusCoordinate(null);
@@ -1941,9 +1941,9 @@ export default function ContractorPortal({ onBack }) {
 
               <ScrollView style={styles.mapBottomCardScroll} showsVerticalScrollIndicator={false}>
                 <View style={[styles.divider, { marginVertical: 8 }]} />
-                
+
                 <Text style={styles.expandedSectionTitle}>Yapı & Tapu Detayları</Text>
-                
+
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Ada / Parsel:</Text>
                   <Text style={[styles.detailValue, { fontSize: 12 }]}>
@@ -2068,7 +2068,7 @@ export default function ContractorPortal({ onBack }) {
 
   const renderProfileView = () => {
     const totalLikes = contractorProjects.reduce((sum, p) => sum + (p.likes || 0), 0);
-    
+
     return (
       <View style={{ flex: 1, backgroundColor: PORTAL_COLORS.bg }}>
         <ScrollView contentContainerStyle={[globalStyles.scrollContainer, { paddingTop: 16, paddingBottom: 100 }]}>
@@ -2110,7 +2110,7 @@ export default function ContractorPortal({ onBack }) {
                 )}
               </View>
               <Text style={styles.profileEmail}>{contractorInfo?.email}</Text>
-              
+
               {contractorInfo?.phone ? (
                 <Text style={styles.profileInfoText}><Phone size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.phone}</Text>
               ) : null}
@@ -2122,7 +2122,7 @@ export default function ContractorPortal({ onBack }) {
               ) : null}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.editProfileBtn}
               onPress={() => setShowEditForm(prev => !prev)}
             >
@@ -2136,9 +2136,9 @@ export default function ContractorPortal({ onBack }) {
           {showEditForm && (
             <View style={[styles.profileHeaderCard, { marginTop: 12 }]}>
               <Text style={[styles.expandedSectionTitle, { color: PORTAL_COLORS.accent }]}>Profili Düzenle</Text>
-              
+
               <Text style={styles.editFormLabel}>Firma Adı</Text>
-              <TextInput 
+              <TextInput
                 style={styles.profileInput}
                 value={editCompanyName}
                 onChangeText={setEditCompanyName}
@@ -2147,7 +2147,7 @@ export default function ContractorPortal({ onBack }) {
               />
 
               <Text style={styles.editFormLabel}>Telefon Numarası</Text>
-              <TextInput 
+              <TextInput
                 style={styles.profileInput}
                 value={editPhone}
                 onChangeText={setEditPhone}
@@ -2157,7 +2157,7 @@ export default function ContractorPortal({ onBack }) {
               />
 
               <Text style={styles.editFormLabel}>Adres</Text>
-              <TextInput 
+              <TextInput
                 style={[styles.profileInput, { height: 80, textAlignVertical: 'top' }]}
                 value={editAddress}
                 onChangeText={setEditAddress}
@@ -2167,7 +2167,7 @@ export default function ContractorPortal({ onBack }) {
               />
 
               <Text style={styles.editFormLabel}>Web Sitesi</Text>
-              <TextInput 
+              <TextInput
                 style={styles.profileInput}
                 value={editWebsite}
                 onChangeText={setEditWebsite}
@@ -2176,7 +2176,7 @@ export default function ContractorPortal({ onBack }) {
                 autoCapitalize="none"
               />
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.saveProfileBtn}
                 onPress={handleSaveProfile}
                 disabled={savingProfile}
@@ -2193,7 +2193,7 @@ export default function ContractorPortal({ onBack }) {
           {/* Portfolio Grid Header */}
           <View style={styles.portfolioGridHeader}>
             <Text style={styles.portfolioTitle}>Portfolyo Projeleri</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addProjectBtn}
               onPress={() => setAddProjectModalOpen(true)}
             >
@@ -2225,7 +2225,7 @@ export default function ContractorPortal({ onBack }) {
     for (let i = 0; i < contractorProjects.length; i += 3) {
       rows.push(contractorProjects.slice(i, i + 3));
     }
-    
+
     return (
       <View style={styles.gridContainer}>
         {rows.map((row, rIdx) => (
@@ -2267,7 +2267,7 @@ export default function ContractorPortal({ onBack }) {
         onRequestClose={() => setSelectedProject(null)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={() => setSelectedProject(null)}
@@ -2281,7 +2281,7 @@ export default function ContractorPortal({ onBack }) {
                   <Text style={styles.projectModalSub} numberOfLines={1}>{selectedProject.location} • {selectedProject.year}</Text>
                 </View>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeProjectModalBtn}
                 onPress={() => setSelectedProject(null)}
               >
@@ -2312,9 +2312,9 @@ export default function ContractorPortal({ onBack }) {
                   }
                 }}
                 renderItem={({ item }) => (
-                  <Image 
-                    source={{ uri: item }} 
-                    style={{ width: width - 40, height: '100%' }} 
+                  <Image
+                    source={{ uri: item }}
+                    style={{ width: width - 40, height: '100%' }}
                     resizeMode="cover"
                   />
                 )}
@@ -2340,15 +2340,15 @@ export default function ContractorPortal({ onBack }) {
 
             {/* Description and Likes */}
             <View style={styles.modalActionRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.likeBtnContainer}
                 onPress={() => handleToggleLike(selectedProject)}
                 activeOpacity={0.8}
               >
-                <Heart 
-                  size={20} 
-                  color={selectedProject.likedByMe ? "#EF4444" : "#F1F5F9"} 
-                  fill={selectedProject.likedByMe ? "#EF4444" : "transparent"} 
+                <Heart
+                  size={20}
+                  color={selectedProject.likedByMe ? "#EF4444" : "#F1F5F9"}
+                  fill={selectedProject.likedByMe ? "#EF4444" : "transparent"}
                 />
                 <Text style={styles.likeBtnText}>{selectedProject.likes || 0} Beğeni</Text>
               </TouchableOpacity>
@@ -2374,7 +2374,7 @@ export default function ContractorPortal({ onBack }) {
         onRequestClose={() => setAddProjectModalOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={() => setAddProjectModalOpen(false)}
@@ -2382,7 +2382,7 @@ export default function ContractorPortal({ onBack }) {
           <View style={[styles.projectDetailModalCard, { height: '80%', maxHeight: 600 }]}>
             <View style={styles.projectModalHeader}>
               <Text style={styles.projectModalTitle}>Yeni Proje Yayınla</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeProjectModalBtn}
                 onPress={() => setAddProjectModalOpen(false)}
               >
@@ -2397,7 +2397,7 @@ export default function ContractorPortal({ onBack }) {
                 {newProjectImages.map((img, imgIdx) => (
                   <View key={imgIdx} style={styles.pickedImageWrapper}>
                     <Image source={{ uri: img }} style={styles.pickedImage} />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.deletePickedImageBtn}
                       onPress={() => setNewProjectImages(prev => prev.filter((_, idx) => idx !== imgIdx))}
                     >
@@ -2405,9 +2405,9 @@ export default function ContractorPortal({ onBack }) {
                     </TouchableOpacity>
                   </View>
                 ))}
-                
+
                 {newProjectImages.length < 5 && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.pickImageBtn}
                     onPress={handlePickImages}
                     activeOpacity={0.8}
@@ -2476,7 +2476,7 @@ export default function ContractorPortal({ onBack }) {
 
   const renderBidModal = () => {
     if (!selectedRequestForBid) return null;
-    
+
     // Check if contractor already bid on this request
     const existingBid = myBids.find(b => b.submissionId === selectedRequestForBid.id);
 
@@ -2615,16 +2615,16 @@ export default function ContractorPortal({ onBack }) {
               shadowOpacity: 0,
             }
           ]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.headerBackBtn,
                 activeTab === 'map' && styles.floatingHeaderBtn
-              ]} 
+              ]}
               onPress={onBack}
             >
               <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
-            
+
             {activeTab === 'map' ? (
               <View style={styles.floatingHeaderTitleContainer}>
                 <Text style={styles.floatingHeaderTitleText} numberOfLines={1}>{currentLocationName}</Text>
@@ -2635,11 +2635,11 @@ export default function ContractorPortal({ onBack }) {
               </Text>
             )}
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.headerLogoutBtn,
                 activeTab === 'map' && styles.floatingHeaderBtn
-              ]} 
+              ]}
               onPress={handleLogout}
             >
               <LogOut size={18} color={COLORS.danger} />
