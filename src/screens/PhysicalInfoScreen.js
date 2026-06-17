@@ -1342,7 +1342,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 {blockKeys.length > 1 ? `${blockKeys[currentBlockIndex]?.label.toUpperCase()} MODEL ÖNİZLEME` : 'BİNA MODELİ ÖNİZLEME'}
               </Text>
 
-              <View>
+              <View style={{ width: '100%', position: 'relative', alignItems: 'center' }}>
               <View style={styles.buildingWrapper}>
                 {/* Çatı */}
                 {roofType === 'mansart' ? (
@@ -1470,16 +1470,18 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                       </TouchableOpacity>
                     );
                   })}
-
-                <TouchableOpacity 
-                  activeOpacity={0.8} 
-                  onPress={() => setFullScreenModelVisible(true)}
-                  style={{ position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.5)', padding: 6, borderRadius: 20, zIndex: 50 }}
-                >
-                  <ZoomIn size={16} color="#FFF" />
-                </TouchableOpacity>
+                </View>
               </View>
+
+              <TouchableOpacity 
+                activeOpacity={0.8} 
+                onPress={() => setFullScreenModelVisible(true)}
+                style={{ position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.5)', padding: 6, borderRadius: 20, zIndex: 50 }}
+              >
+                <ZoomIn size={16} color="#FFF" />
+              </TouchableOpacity>
             </View>
+          </View>
 
             {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
             <View style={globalStyles.glassCard}>
