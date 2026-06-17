@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: width * 0.8,
     borderRadius: width * 0.4,
-    backgroundColor: COLORS.primary,
-    opacity: 0.03,
+    backgroundColor: '#FDC010', // Logonun altın rengi
+    opacity: 0.05,
     blurRadius: 100,
   },
   glowViolet: {
@@ -306,8 +306,8 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: width * 0.8,
     borderRadius: width * 0.4,
-    backgroundColor: COLORS.secondary,
-    opacity: 0.03,
+    backgroundColor: '#FDC010', // Logonun altın rengi
+    opacity: 0.05,
     blurRadius: 100,
   },
   trackBtn: {
