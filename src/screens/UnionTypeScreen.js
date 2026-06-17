@@ -22,7 +22,7 @@ export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 
@@ -64,7 +64,7 @@ export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(6, 182, 212, 0.08)' }]}>
-                  <Grid3X3 size={24} color={COLORS.primary} />
+                  <Grid3X3 size={24} color={COLORS.primary} style={{ flexShrink: 0 }} />
                 </View>
                 <Text style={styles.cardTitle}>Ada Bazlı Birleşme</Text>
               </View>
@@ -85,7 +85,7 @@ export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
-                  <Network size={24} color={COLORS.secondary} />
+                  <Network size={24} color={COLORS.secondary} style={{ flexShrink: 0 }} />
                 </View>
                 <Text style={styles.cardTitle}>Çoklu Parsel Birleşme</Text>
               </View>

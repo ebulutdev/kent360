@@ -376,7 +376,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
           onPress={handlePress}
           activeOpacity={0.8}
         >
-          <Plus size={10} color={COLORS.primary} style={{ marginBottom: 2 }} />
+          <Plus size={10} color={COLORS.primary} style={{ flexShrink: 0,  marginBottom: 2 }} />
           <Text style={styles.facadeAddText}>CEPHE EKLE</Text>
         </TouchableOpacity>
       );
@@ -562,7 +562,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{buildingWidth} m</Text>
               <TouchableOpacity
@@ -576,7 +576,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -598,7 +598,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{buildingDepth} m</Text>
               <TouchableOpacity
@@ -612,7 +612,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -680,7 +680,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
           <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 16 }}>
             {/* Geri Butonu */}
             <TouchableOpacity style={styles.backBtn} onPress={handleBackSubStep}>
-              <ArrowLeft size={20} color={COLORS.textLight} />
+              <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               <Text style={styles.backBtnText}>Geri</Text>
             </TouchableOpacity>
 
@@ -789,20 +789,21 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   </View>
                 )}
 
-                {/* Devam Et / İleri Butonu */}
-                <TouchableOpacity
-                  style={styles.nextBtn}
-                  onPress={currentQuestionStep === STEPS.length - 1 ? handleNextSubmit : handleNextSubStep}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.nextBtnText}>
-                    {currentQuestionStep === STEPS.length - 1 ? 'Evet, Bina Profilini Onayla (Devam Et)' : 'Devam Et'}
-                  </Text>
-                  <ArrowRight size={20} color={COLORS.secondary} />
-                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
+          <View style={{ padding: 16, paddingBottom: Math.max(16, insets.bottom) }}>
+            <TouchableOpacity
+              style={styles.nextBtn}
+              onPress={currentQuestionStep === STEPS.length - 1 ? handleNextSubmit : handleNextSubStep}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.nextBtnText}>
+                {currentQuestionStep === STEPS.length - 1 ? 'Evet, Bina Profilini Onayla (Devam Et)' : 'Devam Et'}
+              </Text>
+              <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>

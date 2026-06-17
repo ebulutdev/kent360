@@ -191,7 +191,7 @@ export default function MapScreen({ data, updateData, onNext, onBack }) {
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 
@@ -218,7 +218,7 @@ export default function MapScreen({ data, updateData, onNext, onBack }) {
           <View style={[globalStyles.glassCard, { padding: 16 }]}>
           <View style={styles.headerBox}>
             <View style={styles.iconWrapper}>
-              <MapPin size={24} color={COLORS.primary} />
+              <MapPin size={24} color={COLORS.primary} style={{ flexShrink: 0 }} />
             </View>
             <Text style={styles.stepTitle}>AŞAMA 3: Resmi Bilgiler</Text>
           </View>
@@ -252,19 +252,22 @@ export default function MapScreen({ data, updateData, onNext, onBack }) {
               onPress={handleGoToMyLocation}
               activeOpacity={0.8}
             >
-              <Compass size={14} color={COLORS.primary} />
+              <Compass size={14} color={COLORS.primary} style={{ flexShrink: 0 }} />
               <Text style={styles.myLocationBtnText}>Kendi Konumum</Text>
             </TouchableOpacity>
           </View>
 
-          {/* İleri Butonu */}
-          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-            <Text style={styles.nextBtnText}>Devam Et</Text>
-            <ArrowRight size={20} color={COLORS.secondary} />
-          </TouchableOpacity>
+
         </View>
         </View>
       </ScrollView>
+
+      <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+          <Text style={styles.nextBtnText}>Devam Et</Text>
+          <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

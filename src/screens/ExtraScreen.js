@@ -53,7 +53,7 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
           {/* Geri Butonu */}
           <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-            <ArrowLeft size={20} color={COLORS.textLight} />
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             <Text style={styles.backBtnText}>Geri</Text>
           </TouchableOpacity>
 
@@ -82,7 +82,7 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
                 <View style={globalStyles.glassCard}>
                 <View style={styles.headerBox}>
                   <View style={styles.iconWrapper}>
-                    <UploadCloud size={24} color={COLORS.secondary} />
+                    <UploadCloud size={24} color={COLORS.secondary} style={{ flexShrink: 0 }} />
                   </View>
                   <Text style={[styles.stepTitle, { color: COLORS.secondary }]}>AŞAMA 4: Ada Detayları</Text>
                 </View>
@@ -103,21 +103,21 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
                     activeOpacity={0.8}
                     onPress={simulateUpload}
                   >
-                    <UploadCloud size={32} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
+                    <UploadCloud size={32} color={COLORS.textMuted} style={{ flexShrink: 0,  marginBottom: 12 }} />
                     <Text style={styles.uploadTitle}>Dosya Seç veya Sürükle</Text>
                     <Text style={styles.uploadSub}>PDF formatında maksimum 10MB</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.fileCard}>
                     <View style={styles.fileInfo}>
-                      <FileText size={28} color={COLORS.secondary} style={{ marginRight: 12 }} />
+                      <FileText size={28} color={COLORS.secondary} style={{ flexShrink: 0,  marginRight: 12 }} />
                       <View>
                         <Text style={styles.fileName}>{pdfFile.name}</Text>
                         <Text style={styles.fileSize}>{pdfFile.size}</Text>
                       </View>
                     </View>
                     <View style={styles.fileActions}>
-                      <CheckCircle2 size={20} color={COLORS.success} style={{ marginRight: 16 }} />
+                      <CheckCircle2 size={20} color={COLORS.success} style={{ flexShrink: 0,  marginRight: 16 }} />
                       <TouchableOpacity onPress={clearFile}>
                         <Text style={styles.deleteText}>Sil</Text>
                       </TouchableOpacity>
@@ -125,16 +125,18 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
                   </View>
                 )}
 
-                {/* İleri Butonu */}
-                <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-                  <Text style={styles.nextBtnText}>Devam Et</Text>
-                  <ArrowRight size={20} color={COLORS.white} />
-                </TouchableOpacity>
+
               </View>
             </View>
             </View>
           </TouchableWithoutFeedback>
         </ScrollView>
+        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+            <Text style={styles.nextBtnText}>Devam Et</Text>
+            <ArrowRight size={20} color={COLORS.white} style={{ flexShrink: 0 }} />
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );

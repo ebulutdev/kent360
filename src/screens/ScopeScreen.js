@@ -75,7 +75,7 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 
@@ -116,7 +116,7 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
                     onPress={() => setScopeType('single_building')}
                   >
                     <View style={styles.optionHeaderRow}>
-                      <MapPin size={18} color={scopeType === 'single_building' ? COLORS.secondary : COLORS.textMuted} style={{ marginRight: 8 }} />
+                      <MapPin size={18} color={scopeType === 'single_building' ? COLORS.secondary : COLORS.textMuted} style={{ flexShrink: 0,  marginRight: 8 }} />
                       <Text style={[
                         styles.typeBtnTitle,
                         scopeType === 'single_building' && styles.typeBtnTitleActive
@@ -134,7 +134,7 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
                     onPress={() => setScopeType('multi_building')}
                   >
                     <View style={styles.optionHeaderRow}>
-                      <Handshake size={18} color={scopeType === 'multi_building' ? COLORS.secondary : COLORS.textMuted} style={{ marginRight: 8 }} />
+                      <Handshake size={18} color={scopeType === 'multi_building' ? COLORS.secondary : COLORS.textMuted} style={{ flexShrink: 0,  marginRight: 8 }} />
                       <Text style={[
                         styles.typeBtnTitle,
                         scopeType === 'multi_building' && styles.typeBtnTitleActive
@@ -149,11 +149,11 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
                     <Text style={styles.stepperLabel}>Sürece katılacak toplam bina adedi:</Text>
                     <View style={styles.counterContainer}>
                       <TouchableOpacity style={styles.counterBtn} onPress={handleMinus}>
-                        <Minus size={20} color={COLORS.textLight} />
+                        <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                       </TouchableOpacity>
                       <Text style={styles.counterValue}>{count}</Text>
                       <TouchableOpacity style={styles.counterBtn} onPress={handlePlus}>
-                        <Plus size={20} color={COLORS.textLight} />
+                        <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -170,11 +170,11 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
                   <Text style={styles.stepperLabel}>Sitenizde toplam kaç blok bulunuyor?</Text>
                   <View style={styles.counterContainer}>
                     <TouchableOpacity style={styles.counterBtn} onPress={handleTotalMinus}>
-                      <Minus size={20} color={COLORS.textLight} />
+                      <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                     <Text style={styles.counterValue}>{totalCount}</Text>
                     <TouchableOpacity style={styles.counterBtn} onPress={handleTotalPlus}>
-                      <Plus size={20} color={COLORS.textLight} />
+                      <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.blockHelperText}>Sitenizdeki toplam blok adedi</Text>
@@ -184,11 +184,11 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
                   <Text style={styles.stepperLabel}>Bu blokların kaç tanesi yenileme/dönüşüm sürecine dahil edilecek?</Text>
                   <View style={styles.counterContainer}>
                     <TouchableOpacity style={styles.counterBtn} onPress={handleParticipatingMinus}>
-                      <Minus size={20} color={COLORS.textLight} />
+                      <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                     <Text style={styles.counterValue}>{count}</Text>
                     <TouchableOpacity style={styles.counterBtn} onPress={handleParticipatingPlus}>
-                      <Plus size={20} color={COLORS.textLight} />
+                      <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.blockHelperText}>Sürece katılacak toplam blok sayısı</Text>
@@ -196,14 +196,17 @@ export default function ScopeScreen({ data, updateData, onNext, onBack }) {
               </>
             )}
 
-            {/* İleri Butonu */}
-            <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-              <Text style={styles.nextBtnText}>Devam Et</Text>
-              <ArrowRight size={20} color={COLORS.white} />
-            </TouchableOpacity>
+
           </View>
         </View>
       </ScrollView>
+
+      <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+          <Text style={styles.nextBtnText}>Devam Et</Text>
+          <ArrowRight size={20} color={COLORS.white} style={{ flexShrink: 0 }} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

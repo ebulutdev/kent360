@@ -28,7 +28,7 @@ export default function WelcomeScreen({ onNext, onGoToContractor, onTrackRequest
             activeOpacity={0.8}
             onPress={onGoToContractor}
           >
-            <Briefcase size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Briefcase size={14} color={COLORS.primary} style={{ flexShrink: 0,  marginRight: 6 }} />
             <Text style={styles.contractorBtnText}>Müteahhit Girişi</Text>
           </TouchableOpacity>
         </View>
@@ -107,7 +107,7 @@ export default function WelcomeScreen({ onNext, onGoToContractor, onTrackRequest
                 style={styles.startBtnGradient}
               >
                 <Text style={styles.startBtnText}>Teklif Alım Sürecini Başlat</Text>
-                <ArrowRight size={20} color={COLORS.white} />
+                <ArrowRight size={20} color={COLORS.white} style={{ flexShrink: 0 }} />
               </LinearGradient>
             </TouchableOpacity>
 
@@ -136,14 +136,15 @@ export default function WelcomeScreen({ onNext, onGoToContractor, onTrackRequest
                 <View style={styles.trackModalCard}>
                   <Text style={styles.trackModalTitle}>Başvuru Sorgulama</Text>
                   <Text style={styles.trackModalSub}>
-                    Kent360 üzerinden oluşturduğunuz kentsel dönüşüm başvurusunun Referans ID'sini giriniz.
+                    Kent360 üzerinden oluşturduğunuz kentsel dönüşüm başvurusunun telefon numarasını giriniz.
                   </Text>
                   
                   <TextInput
                     style={styles.trackInput}
-                    placeholder="Referans ID (Örn: sample_sub_1)"
+                    placeholder="Telefon Numarası (Örn: 05321112233)"
                     placeholderTextColor="#64748B"
                     autoCapitalize="none"
+                    keyboardType="phone-pad"
                     value={trackIdInput}
                     onChangeText={setTrackIdInput}
                   />
@@ -163,7 +164,7 @@ export default function WelcomeScreen({ onNext, onGoToContractor, onTrackRequest
                       style={[styles.modalBtn, styles.submitBtn]}
                       onPress={async () => {
                         if (!trackIdInput.trim()) {
-                          Alert.alert('Hata', 'Lütfen geçerli bir Referans ID giriniz.');
+                          Alert.alert('Hata', 'Lütfen geçerli bir telefon numarası giriniz.');
                           return;
                         }
                         setTrackingLoading(true);

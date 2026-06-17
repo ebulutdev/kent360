@@ -536,7 +536,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         >
           <View style={styles.choiceHeader}>
             <View style={[styles.iconBox, { backgroundColor: 'rgba(6, 182, 212, 0.08)' }]}>
-              <Calculator size={24} color={COLORS.primary} />
+              <Calculator size={24} color={COLORS.primary} style={{ flexShrink: 0 }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.choiceTitle}>Ortalama Kat m² Bilgilerinizle Fiyat Alın</Text>
@@ -544,7 +544,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
                 İmar ve kat m² alanlarınızı girerek tahmini yapım maliyetini ve m² hak dağılımlarını anında görün.
               </Text>
             </View>
-            <ArrowRight size={20} color={COLORS.primary} style={{ marginLeft: 8 }} />
+            <ArrowRight size={20} color={COLORS.primary} style={{ flexShrink: 0,  marginLeft: 8 }} />
           </View>
         </TouchableOpacity>
 
@@ -556,7 +556,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
         >
           <View style={styles.choiceHeader}>
             <View style={[styles.iconBox, { backgroundColor: 'rgba(99, 102, 241, 0.08)' }]}>
-              <Briefcase size={24} color={COLORS.secondary} />
+              <Briefcase size={24} color={COLORS.secondary} style={{ flexShrink: 0 }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.choiceTitle, { color: COLORS.secondary }]}>Detaylı Resmi Teklif İçin Tıkla</Text>
@@ -564,7 +564,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
                 Kadastro ve imar durumu analizine dayalı, bölgenizdeki yüklenici firmalardan resmi fizibilite teklif raporu talep edin.
               </Text>
             </View>
-            <ArrowRight size={20} color={COLORS.secondary} style={{ marginLeft: 8 }} />
+            <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0,  marginLeft: 8 }} />
           </View>
         </TouchableOpacity>
       </View>
@@ -887,7 +887,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
           {/* Arsa Sahibi Kazanım Kartı */}
           <View style={styles.landownerCard}>
             <View style={styles.cardHeaderWithIcon}>
-              <Coins size={16} color="#F59E0B" />
+              <Coins size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
               <Text style={styles.landownerCardTitle}>ARSA SAHİBİ KAZANIMI</Text>
             </View>
             <View style={styles.cardStatRow}>
@@ -911,7 +911,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
           {!isNoContractor && (
             <View style={styles.contractorCard}>
               <View style={styles.cardHeaderWithIcon}>
-                <Briefcase size={16} color="#94a3b8" />
+                <Briefcase size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
                 <Text style={styles.contractorCardTitle}>MÜTEAHHİT HAK & ANALİZİ</Text>
               </View>
               <View style={styles.cardStatRow}>
@@ -1080,7 +1080,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
           activeOpacity={0.8}
         >
           <Text style={styles.advancedToggleBtnText}>Gelişmiş Değerleme Ayarları</Text>
-          <ChevronDown size={16} color={COLORS.primary} />
+          <ChevronDown size={16} color={COLORS.primary} style={{ flexShrink: 0 }} />
         </TouchableOpacity>
 
         {/* OFFICIAL SEAL & SIGNATURE BLOCK */}
@@ -1102,7 +1102,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
 
           {/* Official verified stamp */}
           <View style={styles.officialStampBox}>
-            <ShieldCheck size={18} color="#059669" style={{ marginRight: 6 }} />
+            <ShieldCheck size={18} color="#059669" style={{ flexShrink: 0,  marginRight: 6 }} />
             <Text style={styles.officialStampText}>
               KENT360® DOĞRULANMIŞ FİZİBİLİTE RAPORU
             </Text>
@@ -1128,7 +1128,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
             onPress={onNext}
             activeOpacity={0.8}
           >
-            <Briefcase size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Briefcase size={16} color="#FFFFFF" style={{ flexShrink: 0,  marginRight: 6 }} />
             <Text style={styles.submitOfferBtnText}>Detaylı Resmi Teklif Al</Text>
           </TouchableOpacity>
         </View>
@@ -1142,7 +1142,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={handleBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 

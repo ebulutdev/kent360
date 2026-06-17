@@ -17,11 +17,19 @@ import { COLORS, FONTS, globalStyles } from '../styles/theme';
 
 const { width, height } = Dimensions.get('window');
 
-const LOCATION_DATA = {
-  'İstanbul': ['Kadıköy', 'Beşiktaş', 'Üsküdar', 'Fatih', 'Şişli', 'Maltepe', 'Kartal', 'Pendik'],
-  'Ankara': ['Çankaya', 'Keçiören', 'Yenimahalle', 'Mamak', 'Etimesgut'],
-  'İzmir': ['Bornova', 'Karşıyaka', 'Konak', 'Buca', 'Çeşme']
-};
+import citiesData from '../data/cities.json';
+
+// İstanbul, Ankara ve İzmir'i başa alıp diğerlerini alfabetik olarak sıralıyoruz
+const priorityCities = ['İstanbul', 'Ankara', 'İzmir'];
+const otherCities = Object.keys(citiesData).filter(c => !priorityCities.includes(c)).sort((a, b) => a.localeCompare(b, 'tr'));
+
+const LOCATION_DATA = {};
+priorityCities.forEach(c => {
+  if (citiesData[c]) LOCATION_DATA[c] = citiesData[c];
+});
+otherCities.forEach(c => {
+  LOCATION_DATA[c] = citiesData[c];
+});
 
 export default function LocationScreen({ data, updateData, onNext, onBack }) {
   const insets = useSafeAreaInsets();
@@ -71,7 +79,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 
@@ -98,7 +106,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
           <View style={globalStyles.glassCard}>
           <View style={styles.headerBox}>
             <View style={styles.iconWrapper}>
-              <MapPin size={24} color={COLORS.primary} />
+              <MapPin size={24} color={COLORS.primary} style={{ flexShrink: 0 }} />
             </View>
             <Text style={styles.stepTitle}>AŞAMA 3: Resmi Bilgiler</Text>
           </View>
@@ -118,7 +126,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
             <Text style={[styles.triggerText, !selectedCity && styles.placeholderText]}>
               {selectedCity || 'İl seçiniz'}
             </Text>
-            <ChevronDown size={20} color={COLORS.textMuted} />
+            <ChevronDown size={20} color={COLORS.textMuted} style={{ flexShrink: 0 }} />
           </TouchableOpacity>
 
           {/* İlçe Seçimi */}
@@ -131,17 +139,19 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
             <Text style={[styles.triggerText, !selectedDistrict && styles.placeholderText]}>
               {selectedDistrict || 'İlçe seçiniz'}
             </Text>
-            <ChevronDown size={20} color={COLORS.textMuted} />
+            <ChevronDown size={20} color={COLORS.textMuted} style={{ flexShrink: 0 }} />
           </TouchableOpacity>
 
-          {/* İleri Butonu */}
+
+        </View>
+        </View>
+        </ScrollView>
+        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
             <Text style={styles.nextBtnText}>Devam Et</Text>
-            <ArrowRight size={20} color={COLORS.secondary} />
+            <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
           </TouchableOpacity>
         </View>
-        </View>
-      </ScrollView>
 
       {/* Şık Seçim Modali */}
       <Modal
@@ -162,7 +172,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
                 {activeSelectType === 'city' ? 'İl Seçiniz' : 'İlçe Seçiniz'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={COLORS.textLight} />
+                <X size={24} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
 

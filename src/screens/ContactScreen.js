@@ -257,7 +257,7 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
           {/* Geri Butonu */}
           <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack} disabled={loading}>
-            <ArrowLeft size={20} color={COLORS.textLight} />
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             <Text style={styles.backBtnText}>Geri</Text>
           </TouchableOpacity>
 
@@ -286,7 +286,7 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
                 <View style={globalStyles.glassCard}>
                 <View style={styles.headerBox}>
                   <View style={styles.iconWrapper}>
-                    <User size={24} color={COLORS.primary} />
+                    <User size={24} color={COLORS.primary} style={{ flexShrink: 0 }} />
                   </View>
                   <Text style={styles.stepTitle}>AŞAMA 4: İletişim</Text>
                 </View>
@@ -345,7 +345,7 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
                   ) : (
                     <>
                       <Text style={styles.completeBtnText}>Talebi Tamamla</Text>
-                      <CheckCircle size={20} color={COLORS.secondary} />
+                      <CheckCircle size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
                     </>
                   )}
                 </TouchableOpacity>

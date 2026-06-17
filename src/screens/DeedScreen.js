@@ -223,7 +223,7 @@ export default function DeedScreen({ data, updateData, onNext, onBack }) {
           activeOpacity={0.8}
         >
           <View style={[styles.checkboxContainer, differentParsels && styles.checkboxChecked]}>
-            {differentParsels && <Check size={12} color="#FFFFFF" />}
+            {differentParsels && <Check size={12} color="#FFFFFF" style={{ flexShrink: 0 }} />}
           </View>
           <Text style={styles.checkboxLabel}>
             {isComplex ? 'Bloklarımız farklı parseller üzerinde yer alıyor' : 'Binalarımız farklı parseller üzerinde yer alıyor'}
@@ -245,7 +245,7 @@ export default function DeedScreen({ data, updateData, onNext, onBack }) {
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
           {/* Geri Butonu */}
           <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-            <ArrowLeft size={20} color={COLORS.textLight} />
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             <Text style={styles.backBtnText}>Geri</Text>
           </TouchableOpacity>
 
@@ -278,7 +278,7 @@ export default function DeedScreen({ data, updateData, onNext, onBack }) {
                     style={styles.infoBtn} 
                     onPress={() => setInfoModalVisible(true)}
                   >
-                    <Info size={18} color={COLORS.primary} />
+                    <Info size={18} color={COLORS.primary} style={{ flexShrink: 0 }} />
                   </TouchableOpacity>
                 </View>
 
@@ -289,16 +289,18 @@ export default function DeedScreen({ data, updateData, onNext, onBack }) {
 
                 {renderDeedFields()}
 
-                {/* İleri Butonu */}
-                <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-                  <Text style={styles.nextBtnText}>Devam Et</Text>
-                  <ArrowRight size={20} color={COLORS.secondary} />
-                </TouchableOpacity>
+
               </View>
             </View>
             </View>
           </TouchableWithoutFeedback>
         </ScrollView>
+        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+            <Text style={styles.nextBtnText}>Devam Et</Text>
+            <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* [ i ] Bilgi Modali */}
@@ -317,11 +319,11 @@ export default function DeedScreen({ data, updateData, onNext, onBack }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleBox}>
-                <Info size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
+                <Info size={20} color={COLORS.primary} style={{ flexShrink: 0,  marginRight: 8 }} />
                 <Text style={styles.modalTitle}>Ada & Parsel Sorgulama</Text>
               </View>
               <TouchableOpacity onPress={() => setInfoModalVisible(false)}>
-                <X size={20} color={COLORS.textLight} />
+                <X size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
 
