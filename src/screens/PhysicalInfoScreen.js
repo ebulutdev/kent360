@@ -1479,8 +1479,6 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                   <ZoomIn size={16} color="#FFF" />
                 </TouchableOpacity>
               </View>
-                </View>
-              </TouchableOpacity>
             </View>
 
             {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
