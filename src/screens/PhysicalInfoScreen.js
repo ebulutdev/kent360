@@ -11,8 +11,10 @@ import {
   useWindowDimensions,
   Alert,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
+  Keyboard,
   Dimensions,
+  PanResponder,
+  TouchableWithoutFeedback,
   Animated,
   Easing
 } from 'react-native';
@@ -29,7 +31,8 @@ import {
   ChevronDown,
   Trash2,
   ArrowRight,
-  Layers
+  Layers,
+  ZoomIn
 } from 'lucide-react-native';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import Svg, { Polygon, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
@@ -103,7 +106,7 @@ const ActiveHighlight = React.memo(() => {
   );
 });
 
-export default function PhysicalInfoScreen({ data, updateData, onNext, onBack }) {
+export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, navDirection }) {
   const { width, height: screenHeight } = useWindowDimensions();
   const isSmallScreen = width < 410;
   const insets = useSafeAreaInsets();
@@ -144,10 +147,78 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
   const defaultSqm = data.width && data.depth ? Math.round(data.width * data.depth) : 120;
   const [footprintSqm, setFootprintSqm] = useState(defaultSqm);
   const [normalFloorSqm, setNormalFloorSqm] = useState(defaultSqm);
+  const [fullScreenModelVisible, setFullScreenModelVisible] = useState(false);
+  const [modelScale, setModelScale] = useState(1.2);
+
+  const startScale = useRef(1.2);
+  const currentScale = useRef(1.2);
+  const initialDistance = useRef(null);
+  const pendingJumpToLastStep = useRef(false);
+  const [triggerJump, setTriggerJump] = useState(false);
+
+  // Set initial block index if navigating backward
+  useEffect(() => {
+    if (navDirection === 'backward') {
+      setCurrentBlockIndex(Math.max(0, blockKeys.length - 1));
+      pendingJumpToLastStep.current = true;
+    }
+  }, []);
+
+  const updateScale = (newScale) => {
+    newScale = Math.max(0.8, Math.min(newScale, 3.0));
+    setModelScale(newScale);
+    currentScale.current = newScale;
+    startScale.current = newScale;
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onPanResponderGrant: (evt) => {
+        if (evt.nativeEvent.touches.length === 2) {
+          const { pageX: x1, pageY: y1 } = evt.nativeEvent.touches[0];
+          const { pageX: x2, pageY: y2 } = evt.nativeEvent.touches[1];
+          initialDistance.current = Math.hypot(x2 - x1, y2 - y1);
+          startScale.current = currentScale.current;
+        }
+      },
+      onPanResponderMove: (evt) => {
+        if (evt.nativeEvent.touches.length === 2 && initialDistance.current) {
+          const { pageX: x1, pageY: y1 } = evt.nativeEvent.touches[0];
+          const { pageX: x2, pageY: y2 } = evt.nativeEvent.touches[1];
+          const distance = Math.hypot(x2 - x1, y2 - y1);
+          const zoomFactor = distance / initialDistance.current;
+          
+          let newScale = startScale.current * zoomFactor;
+          newScale = Math.max(0.8, Math.min(newScale, 3.0));
+          setModelScale(newScale);
+          currentScale.current = newScale;
+        }
+      },
+      onPanResponderRelease: () => {
+        startScale.current = currentScale.current;
+        initialDistance.current = null;
+      },
+      onPanResponderTerminate: () => {
+        startScale.current = currentScale.current;
+        initialDistance.current = null;
+      }
+    })
+  ).current;
+
+  // Effect to perform the jump after STEPS is re-evaluated
+  useEffect(() => {
+    if (triggerJump) {
+      setCurrentQuestionStep(STEPS.length - 1);
+      setTriggerJump(false);
+    }
+  }, [STEPS, triggerJump]);
 
   // Restore state from previously saved data on mount or block change
   useEffect(() => {
     const activeKey = blockKeys[currentBlockIndex]?.key || 'single';
+    const bData = data.structures?.[activeKey] || {}; 
     const existingStructure = savedBlocks[activeKey] || data.buildingStructures?.[activeKey];
     if (existingStructure) {
       if (existingStructure.roofType) setRoofType(existingStructure.roofType);
@@ -231,7 +302,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
        setBasementTypes({});
        setBasementUnitCounts({});
        setFootprintSqm(defaultSqm);
-       setNormalFloorSqm(defaultSqm);
+       setNormalFloorSqm(bData.normalFloorSqm || defaultSqm);
+    }
+
+    if (pendingJumpToLastStep.current) {
+      setTriggerJump(true);
+      pendingJumpToLastStep.current = false;
+    } else {
+      setCurrentQuestionStep(0);
     }
   }, [currentBlockIndex, blockKeys, data.buildingStructures, savedBlocks]);
 
@@ -448,8 +526,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
       key: 'roofType'
     });
 
-    // Çatı Piyesi (only if roofType is not none)
-    if (roofType !== 'none') {
+    // Çatı Piyesi (only if roofType is normal, mansart implies no piyes)
+    if (roofType !== 'none' && roofType !== 'mansart') {
       steps.push({
         title: 'Çatı Piyesi',
         question: 'En üst katın çatı boşluğunda dubleks daire (çatı piyesi) var mı?',
@@ -499,8 +577,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     } else {
       if (currentBlockIndex > 0) {
         // Önceki binaya dön
+        pendingJumpToLastStep.current = true;
         setCurrentBlockIndex(currentBlockIndex - 1);
-        setCurrentQuestionStep(0); // Önceki binanın ilk sorusundan (veya son sorusundan) başlat
       } else {
         onBack(); // Go back to the previous screen of the main wizard
       }
@@ -702,6 +780,117 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
     );
   };
 
+  const renderBuildingModel = (scale = 1) => (
+    <View style={[styles.buildingWrapper, { transform: [{ scale }] }]}>
+      {/* Çatı */}
+      {roofType === 'mansart' ? (
+        <View style={[styles.roofWrapper, { height: roofHeight }]}>
+          <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
+            <Defs>
+              <SvgLinearGradient id="mansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#334155" stopOpacity="1" />
+                <Stop offset="1" stopColor="#0F172A" stopOpacity="1" />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
+                <Stop offset="1" stopColor="#B45309" stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
+            <Polygon
+              points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
+              fill="url(#mansartRoofGrad)"
+            />
+            <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
+          </Svg>
+          <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
+            <Text style={[styles.roofTextCapsuleText, { fontSize: Math.max(6.5, Math.min(10, roofHeight * 0.22)) }]}>
+              MANSART
+            </Text>
+          </View>
+        </View>
+      ) : roofType === 'normal' ? (
+        <View style={[styles.roofWrapper, { height: roofHeight }]}>
+          <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
+            <Defs>
+              <SvgLinearGradient id="normalRoofGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#3E4F66" stopOpacity="1" />
+                <Stop offset="1" stopColor="#1E293B" stopOpacity="1" />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
+                <Stop offset="1" stopColor="#B45309" stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
+            <Polygon
+              points={`0,${roofHeight * (280 / 220)} 140,0 280,${roofHeight * (280 / 220)}`}
+              fill="url(#normalRoofGrad)"
+            />
+            {hasAttic && (
+              <>
+                <Polygon points={`85,${roofHeight * (280 / 220) * 0.75} 100,${roofHeight * (280 / 220) * 0.5} 115,${roofHeight * (280 / 220) * 0.75}`} fill="#475569" opacity="0.6" />
+                <Polygon points={`89,${roofHeight * (280 / 220) * 0.73} 100,${roofHeight * (280 / 220) * 0.54} 111,${roofHeight * (280 / 220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
+                <Polygon points={`165,${roofHeight * (280 / 220) * 0.75} 180,${roofHeight * (280 / 220) * 0.5} 195,${roofHeight * (280 / 220) * 0.75}`} fill="#475569" opacity="0.6" />
+                <Polygon points={`169,${roofHeight * (280 / 220) * 0.73} 180,${roofHeight * (280 / 220) * 0.54} 191,${roofHeight * (280 / 220) * 0.73}`} fill="#7DD3FC" opacity="0.8" />
+              </>
+            )}
+            <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
+          </Svg>
+          <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
+            <Text style={[styles.roofTextCapsuleText, { fontSize: Math.max(6.5, Math.min(10, roofHeight * 0.22)) }]}>
+              {hasAttic ? 'ÇATI PİYESLİ' : 'NORMAL ÇATI'}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {hasAttic && roofType !== 'none' && (
+        <View style={[styles.duplexConnectionsContainer, { top: roofHeight - 8, width: 90 }]}>
+          <View style={styles.dashedVerticalLine} />
+          <View style={styles.dashedVerticalLine} />
+        </View>
+      )}
+
+      {/* Katlar taşıyıcı blok */}
+      <View style={[styles.floorsContainer, { width: 230, paddingBottom: 4, paddingTop: 4 }]}>
+        {computedBlockData.floors.map((floor) => {
+          const isBasement = floor.type === 'basement';
+          const isGround = floor.type === 'ground';
+
+          return (
+            <View
+              key={floor.key}
+              style={[
+                styles.floorRow,
+                isBasement && styles.floorRowBasement,
+                isGround && styles.floorRowGround,
+                floor.type === 'normal' && styles.floorRowNormal,
+                {
+                  height: baseFloorHeight,
+                  minHeight: baseFloorHeight,
+                  paddingVertical: rowPaddingVertical,
+                  marginVertical: Math.max(1, Math.min(3, baseFloorHeight * 0.05)),
+                  paddingHorizontal: 4,
+                  borderRadius: 6
+                }
+              ]}
+            >
+              <View style={[styles.floorLabelColumn, { width: 44, marginRight: 4 }]}>
+                {renderFloorLabel(floor)}
+              </View>
+
+              <View style={styles.unitCardsContainer}>
+                {floor.units.map((unit, uIdx) => {
+                  const unitNum = unitNumbers[`${floor.key}_${uIdx}`] || (uIdx + 1);
+                  return renderUnitCard(unit, unitNum, floor.key, uIdx);
+                })}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+
   // Rendering custom input controls based on active sub-step
   const renderQuestionControls = () => {
     const activeStep = STEPS[currentQuestionStep];
@@ -723,7 +912,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 }));
               }}
             >
-              <Minus size={20} color="#FFFFFF" />
+              <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
             </TouchableOpacity>
             <Text style={styles.counterValue}>{val}</Text>
             <TouchableOpacity
@@ -735,7 +924,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 }));
               }}
             >
-              <Plus size={20} color="#FFFFFF" />
+              <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -828,7 +1017,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 }));
               }}
             >
-              <Minus size={14} color="#FFFFFF" />
+              <Minus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
             </TouchableOpacity>
             <Text style={styles.counterValueSmall}>{bUnitCount}</Text>
             <TouchableOpacity
@@ -840,7 +1029,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 }));
               }}
             >
-              <Plus size={14} color="#FFFFFF" />
+              <Plus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -857,14 +1046,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.max(1, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{normalFloorCount}</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.min(20, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -879,14 +1068,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.max(20, prev - 5)); }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{footprintSqm} m²</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.min(2000, prev + 5)); }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -901,14 +1090,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.max(20, prev - 5)); }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{normalFloorSqm} m²</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.min(2000, prev + 5)); }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -923,14 +1112,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.max(1, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{groundUnitCount}</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.min(8, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -945,14 +1134,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.max(0, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
               <Text style={styles.counterValue}>{basementCount}</Text>
               <TouchableOpacity
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.min(5, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
               </TouchableOpacity>
             </View>
           </View>
@@ -972,7 +1161,12 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                   styles.optionButton,
                   roofType === opt.type && styles.optionButtonActive
                 ]}
-                onPress={() => setRoofType(opt.type)}
+                onPress={() => {
+                  setRoofType(opt.type);
+                  if (opt.type === 'mansart' || opt.type === 'none') {
+                    setAttic(false);
+                  }
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -1118,7 +1312,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
           {/* Geri Butonu */}
           <TouchableOpacity style={styles.backBtn} onPress={handleBackSubStep}>
-            <ArrowLeft size={20} color={COLORS.textLight} />
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             <Text style={styles.backBtnText}>Geri</Text>
           </TouchableOpacity>
 
@@ -1148,6 +1342,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                 {blockKeys.length > 1 ? `${blockKeys[currentBlockIndex]?.label.toUpperCase()} MODEL ÖNİZLEME` : 'BİNA MODELİ ÖNİZLEME'}
               </Text>
 
+              <View>
               <View style={styles.buildingWrapper}>
                 {/* Çatı */}
                 {roofType === 'mansart' ? (
@@ -1275,8 +1470,17 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={() => setFullScreenModelVisible(true)}
+                  style={{ position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.5)', padding: 6, borderRadius: 20, zIndex: 50 }}
+                >
+                  <ZoomIn size={16} color="#FFF" />
+                </TouchableOpacity>
               </View>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* 2. SORU/CEVAP KARTI (DİĞER AŞAMALARLA AYNI ARAYÜZ) */}
@@ -1305,21 +1509,55 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack })
               </View>
 
 
-              {/* Devam Et / İleri Butonu */}
-              <TouchableOpacity
-                style={styles.nextBtn}
-                onPress={currentQuestionStep === STEPS.length - 1 ? handleConfirmSave : handleNextSubStep}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.nextBtnText}>
-                  {currentQuestionStep === STEPS.length - 1 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
-                </Text>
-                <ArrowRight size={20} color={COLORS.secondary} />
-              </TouchableOpacity>
             </View>
 
           </View>
         </ScrollView>
+
+        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+          {/* Devam Et / İleri Butonu */}
+          <TouchableOpacity
+            style={styles.nextBtn}
+            onPress={currentQuestionStep === STEPS.length - 1 ? handleConfirmSave : handleNextSubStep}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.nextBtnText}>
+              {currentQuestionStep === STEPS.length - 1 ? 'Evet, Birebir Aynı (Devam Et)' : 'Devam Et'}
+            </Text>
+            <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+          </TouchableOpacity>
+        </View>
+
+        {/* BÜYÜTÜLMÜŞ ÖNİZLEME MODALI */}
+        <Modal
+          visible={fullScreenModelVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setFullScreenModelVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: Math.max(40, insets.top + 10), right: 20, zIndex: 10, padding: 10, backgroundColor: '#E2E8F0', borderRadius: 20 }}
+              onPress={() => setFullScreenModelVisible(false)}
+            >
+              <X size={24} color="#334155" />
+            </TouchableOpacity>
+            
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100, paddingHorizontal: 100 }}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+            >
+              <View {...panResponder.panHandlers} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                {renderBuildingModel(modelScale)}
+              </View>
+            </ScrollView>
+
+          </View>
+        </Modal>
+
       </View>
     </KeyboardAvoidingView>
   );

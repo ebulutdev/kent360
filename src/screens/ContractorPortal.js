@@ -18,7 +18,7 @@ import {
   Modal
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Svg, { Path, Circle, Text as SvgText, Defs, Mask, G } from 'react-native-svg';
@@ -325,6 +325,7 @@ export default function ContractorPortal({ onBack }) {
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'map'
+  const [activeFilter, setActiveFilter] = useState('active'); // 'active', 'bids', 'my_jobs', 'completed'
   const [expandedRequestId, setExpandedRequestId] = useState(null);
   const [mapFocusCoordinate, setMapFocusCoordinate] = useState(null);
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
@@ -370,6 +371,8 @@ export default function ContractorPortal({ onBack }) {
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
+  const [editProfilePhoto, setEditProfilePhoto] = useState(null);
+  const [editStories, setEditStories] = useState([]);
   const [showEditForm, setShowEditForm] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -431,6 +434,8 @@ export default function ContractorPortal({ onBack }) {
             setEditPhone(mockProfile.phone);
             setEditAddress(mockProfile.address);
             setEditWebsite(mockProfile.website);
+            setEditProfilePhoto(mockProfile.profilePhoto || null);
+            setEditStories(mockProfile.stories || []);
 
             // Load Mock Projects
             try {
@@ -508,6 +513,8 @@ export default function ContractorPortal({ onBack }) {
             setEditPhone(profile.phone || '');
             setEditAddress(profile.address || '');
             setEditWebsite(profile.website || '');
+            setEditProfilePhoto(profile.profilePhoto || null);
+            setEditStories(profile.stories || []);
 
             // Fetch Contractor Projects with 4-second timeout
             const cacheKey = '@contractor_projects_' + currUser.uid;
@@ -525,8 +532,13 @@ export default function ContractorPortal({ onBack }) {
                 const qProj = query(collection(db, 'contractor_projects'), where('uid', '==', currUser.uid));
                 const projSnap = await getDocs(qProj);
                 const fetched = [];
-                projSnap.forEach(doc => {
-                  fetched.push({ id: doc.id, ...doc.data() });
+                projSnap.forEach(docSnap => {
+                  const data = docSnap.data();
+                  fetched.push({ 
+                    id: docSnap.id, 
+                    ...data,
+                    likedByMe: data.likedBy && Array.isArray(data.likedBy) ? data.likedBy.includes(currUser.uid) : false
+                  });
                 });
                 return fetched;
               };
@@ -994,6 +1006,50 @@ export default function ContractorPortal({ onBack }) {
     }
   };
 
+  const handlePickProfilePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Hata', 'Fotoğraf seçmek için izin vermeniz gerekiyor.');
+      return;
+    }
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setEditProfilePhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
+  const handlePickStories = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Hata', 'Fotoğraf seçmek için izin vermeniz gerekiyor.');
+      return;
+    }
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - editStories.length,
+      quality: 0.6,
+      base64: true,
+    });
+    if (!result.canceled && result.assets) {
+      const newStories = result.assets.map(asset => `data:image/jpeg;base64,${asset.base64}`);
+      const combined = [...editStories, ...newStories].slice(0, 5);
+      setEditStories(combined);
+    }
+  };
+
+  const handleRemoveStory = (index) => {
+    const newS = [...editStories];
+    newS.splice(index, 1);
+    setEditStories(newS);
+  };
+
   const handleSaveProfile = async () => {
     if (!editCompanyName.trim()) {
       Alert.alert('Eksik Bilgi', 'Firma adı boş bırakılamaz.');
@@ -1006,7 +1062,9 @@ export default function ContractorPortal({ onBack }) {
       companyName: editCompanyName.trim(),
       phone: editPhone.trim(),
       address: editAddress.trim(),
-      website: editWebsite.trim()
+      website: editWebsite.trim(),
+      profilePhoto: editProfilePhoto,
+      stories: editStories
     });
 
     try {
@@ -1022,7 +1080,10 @@ export default function ContractorPortal({ onBack }) {
               companyName: editCompanyName.trim(),
               phone: editPhone.trim(),
               address: editAddress.trim(),
-              website: editWebsite.trim()
+              website: editWebsite.trim(),
+              profilePhoto: editProfilePhoto,
+              stories: editStories,
+              verified: false
             });
             return contractorInfo.id;
           } else {
@@ -1327,9 +1388,17 @@ export default function ContractorPortal({ onBack }) {
         await AsyncStorage.setItem('@contractor_projects_' + user.uid, JSON.stringify(updatedProjects));
         if (project.id && !project.id.startsWith('demo_proj_')) {
           const docRef = doc(db, 'contractor_projects', project.id);
-          await updateDoc(docRef, {
-            likes: newLikes
-          });
+          if (isLiked) {
+            await updateDoc(docRef, {
+              likes: newLikes,
+              likedBy: arrayUnion(user.uid)
+            });
+          } else {
+            await updateDoc(docRef, {
+              likes: newLikes,
+              likedBy: arrayRemove(user.uid)
+            });
+          }
         }
       }
     } catch (e) {
@@ -1535,33 +1604,72 @@ export default function ContractorPortal({ onBack }) {
   const handleClusterPress = (clusterId, latitude, longitude) => {
     if (mapRef.current) {
       try {
-        const expansionZoom = superclusterIndex.getClusterExpansionZoom(clusterId);
-        const targetZoom = Math.min(expansionZoom, 15);
-        const newDelta = 360 / Math.pow(2, targetZoom);
-        mapRef.current.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: newDelta,
-          longitudeDelta: newDelta
-        }, 800);
+        const leaves = superclusterIndex.getClusterLeaves(clusterId, 100);
+        if (leaves && leaves.length > 0) {
+          const coords = leaves.map(leaf => ({
+            latitude: parseFloat(leaf.geometry.coordinates[1]),
+            longitude: parseFloat(leaf.geometry.coordinates[0]),
+          }));
+          mapRef.current.fitToCoordinates(coords, {
+            edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
+            animated: true,
+          });
+          return;
+        }
       } catch (e) {
-        const currentLatDelta = mapRegion ? mapRegion.latitudeDelta : 8.5;
-        const currentLngDelta = mapRegion ? mapRegion.longitudeDelta : 12.0;
-        mapRef.current.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: currentLatDelta / 2.5,
-          longitudeDelta: currentLngDelta / 2.5
-        }, 800);
+        console.warn("handleClusterPress leaves error:", e);
       }
+
+      // Fallback
+      const currentLatDelta = mapRegion ? mapRegion.latitudeDelta : 8.5;
+      const currentLngDelta = mapRegion ? mapRegion.longitudeDelta : 12.0;
+      mapRef.current.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: currentLatDelta / 2.5,
+        longitudeDelta: currentLngDelta / 2.5
+      }, 800);
     }
   };
+
+  const FILTERS = [
+    { id: 'active', label: 'Aktif Talepler' },
+    { id: 'bids', label: 'Teklif Verdiklerim' },
+    { id: 'my_jobs', label: 'İşlerim' },
+    { id: 'completed', label: 'Bitirdiğim İşler' },
+  ];
+
+  const filteredRequests = useMemo(() => {
+    if (activeFilter === 'active') return requests;
+    if (activeFilter === 'bids') return requests.filter(r => myBids.some(b => b.submissionId === r.id));
+    return [];
+  }, [requests, myBids, activeFilter]);
 
   const renderDashboard = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.listSectionHeader}>
-        <Text style={styles.sectionTitle}>Aktif Kentsel Dönüşüm Talepleri</Text>
-        <TouchableOpacity onPress={fetchRequests}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }} style={{ flex: 1 }}>
+          {FILTERS.map(f => (
+            <TouchableOpacity 
+              key={f.id} 
+              onPress={() => setActiveFilter(f.id)}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                backgroundColor: activeFilter === f.id ? PORTAL_COLORS.accent : '#E2E8F0',
+                marginRight: 8
+              }}
+            >
+              <Text style={{
+                color: activeFilter === f.id ? '#FFF' : '#64748B',
+                fontFamily: activeFilter === f.id ? FONTS.bold : FONTS.medium,
+                fontSize: 12
+              }}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <TouchableOpacity onPress={fetchRequests} style={{ paddingLeft: 8 }}>
           <Text style={styles.refreshText}>Yenile</Text>
         </TouchableOpacity>
       </View>
@@ -1570,7 +1678,7 @@ export default function ContractorPortal({ onBack }) {
         <ActivityIndicator color={PORTAL_COLORS.accent} style={{ marginTop: 40 }} />
       ) : (
         <View style={styles.requestList}>
-          {requests.map((item) => {
+          {filteredRequests.map((item) => {
             const isExpanded = expandedRequestId === item.id;
             const breakdown = getRequestUnitBreakdown(item);
 
@@ -1727,10 +1835,15 @@ export default function ContractorPortal({ onBack }) {
               </TouchableOpacity>
             );
           })}
-          {requests.length === 0 && (
+          {filteredRequests.length === 0 && (
             <View style={styles.emptyRequestsContainer}>
               <Building size={48} color="#64748B" style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyRequestsText}>Aktif dönüşüm talebi bulunamadı.</Text>
+              <Text style={styles.emptyRequestsText}>
+                {activeFilter === 'bids' ? 'Henüz hiçbir talebe teklif vermediniz.' :
+                 activeFilter === 'my_jobs' ? 'Şu an devam eden işiniz bulunmuyor.' :
+                 activeFilter === 'completed' ? 'Henüz bitirdiğiniz bir iş bulunmuyor.' :
+                 'Aktif dönüşüm talebi bulunamadı.'}
+              </Text>
               <Text style={styles.emptyRequestsSub}>Müteahhit portalını test etmek için örnek talepleri yükleyebilirsiniz.</Text>
               <TouchableOpacity
                 style={styles.seedRequestsBtn}
@@ -2075,8 +2188,10 @@ export default function ContractorPortal({ onBack }) {
           {/* Company header card */}
           <View style={styles.profileHeaderCard}>
             <View style={styles.profileAvatarRow}>
-              <View style={styles.avatarContainer}>
-                {editCompanyName ? (
+              <View style={[styles.avatarContainer, { overflow: 'hidden' }]}>
+                {contractorInfo?.profilePhoto ? (
+                  <Image source={{ uri: contractorInfo.profilePhoto }} style={{ width: '100%', height: '100%' }} />
+                ) : editCompanyName ? (
                   <Text style={styles.avatarText}>
                     {editCompanyName.substring(0, 2).toUpperCase()}
                   </Text>
@@ -2136,6 +2251,51 @@ export default function ContractorPortal({ onBack }) {
           {showEditForm && (
             <View style={[styles.profileHeaderCard, { marginTop: 12 }]}>
               <Text style={[styles.expandedSectionTitle, { color: PORTAL_COLORS.accent }]}>Profili Düzenle</Text>
+              
+              {/* Divider */}
+              <View style={{ height: 1, backgroundColor: '#E2E8F0', marginBottom: 16 }} />
+
+              <Text style={styles.editFormLabel}>Profil Fotoğrafı</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                {editProfilePhoto ? (
+                  <Image source={{ uri: editProfilePhoto }} style={{ width: 60, height: 60, borderRadius: 30, marginRight: 12 }} />
+                ) : (
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                    <User size={24} color="#94A3B8" />
+                  </View>
+                )}
+                <TouchableOpacity onPress={handlePickProfilePhoto} style={{ backgroundColor: PORTAL_COLORS.accent, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 }}>
+                  <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.medium }}>Fotoğraf Seç</Text>
+                </TouchableOpacity>
+                {editProfilePhoto && (
+                  <TouchableOpacity onPress={() => setEditProfilePhoto(null)} style={{ marginLeft: 12 }}>
+                    <Text style={{ color: '#EF4444', fontSize: 12, fontFamily: FONTS.medium }}>Kaldır</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.editFormLabel}>Hikayeler (Maks 5)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
+                {editStories.map((story, idx) => (
+                  <View key={idx} style={{ position: 'relative' }}>
+                    <Image source={{ uri: story }} style={{ width: 60, height: 80, borderRadius: 8 }} />
+                    <TouchableOpacity 
+                      onPress={() => handleRemoveStory(idx)}
+                      style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#EF4444', borderRadius: 12, padding: 2 }}
+                    >
+                      <X size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {editStories.length < 5 && (
+                  <TouchableOpacity 
+                    onPress={handlePickStories}
+                    style={{ width: 60, height: 80, borderRadius: 8, borderWidth: 1, borderColor: PORTAL_COLORS.accent, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Plus size={20} color={PORTAL_COLORS.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
               <Text style={styles.editFormLabel}>Firma Adı</Text>
               <TextInput

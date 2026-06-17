@@ -94,7 +94,7 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
         {/* Geri Butonu */}
         <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} />
+          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
           <Text style={styles.backBtnText}>Geri</Text>
         </TouchableOpacity>
 
@@ -161,14 +161,14 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                     style={styles.counterBtn} 
                     onPress={() => setBuildingCount(prev => Math.max(2, prev - 1))}
                   >
-                    <Minus size={18} color={COLORS.textLight} />
+                    <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                   </TouchableOpacity>
                   <Text style={styles.counterValue}>{buildingCount}</Text>
                   <TouchableOpacity 
                     style={styles.counterBtn} 
                     onPress={() => setBuildingCount(prev => Math.min(15, prev + 1))}
                   >
-                    <Plus size={18} color={COLORS.textLight} />
+                    <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -183,14 +183,14 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                       style={styles.counterBtn} 
                       onPress={() => setTotalBuildingCount(prev => Math.max(1, prev - 1))}
                     >
-                      <Minus size={18} color={COLORS.textLight} />
+                      <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                     <Text style={styles.counterValue}>{totalBuildingCount}</Text>
                     <TouchableOpacity 
                       style={styles.counterBtn} 
                       onPress={() => setTotalBuildingCount(prev => Math.min(30, prev + 1))}
                     >
-                      <Plus size={18} color={COLORS.textLight} />
+                      <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -202,29 +202,32 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                       style={styles.counterBtn} 
                       onPress={() => setBuildingCount(prev => Math.max(1, prev - 1))}
                     >
-                      <Minus size={18} color={COLORS.textLight} />
+                      <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                     <Text style={styles.counterValue}>{buildingCount}</Text>
                     <TouchableOpacity 
                       style={styles.counterBtn} 
                       onPress={() => setBuildingCount(prev => Math.min(totalBuildingCount, prev + 1))}
                     >
-                      <Plus size={18} color={COLORS.textLight} />
+                      <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
             )}
 
-            {/* İleri Butonu */}
-            <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-              <Text style={styles.nextBtnText}>Devam Et</Text>
-              <ArrowRight size={20} color={COLORS.secondary} />
-            </TouchableOpacity>
+
 
           </View>
         </View>
       </ScrollView>
+
+      <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+          <Text style={styles.nextBtnText}>Devam Et</Text>
+          <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

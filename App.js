@@ -23,8 +23,9 @@ import OfferChoiceScreen from './src/screens/OfferChoiceScreen';
 import ContactScreen from './src/screens/ContactScreen';
 import ShareScreen from './src/screens/ShareScreen';
 import ContractorPortal from './src/screens/ContractorPortal';
+import MyApplicationsScreen from './src/screens/MyApplicationsScreen';
 import { db, isMock } from './firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS } from './src/styles/theme';
@@ -41,6 +42,7 @@ export default function App() {
   // Sihirbaz Durum Yönetimi
   const [currentStep, setCurrentStep] = useState(0);
   const [stepHistory, setStepHistory] = useState([0]);
+  const [navDirection, setNavDirection] = useState('forward');
   const [wizardData, setWizardData] = useState({
     buildingType: '',      // single, complex
     scopeType: '',         // single_building, multi_building, site
@@ -62,6 +64,7 @@ export default function App() {
 
   const [showContractorPortal, setShowContractorPortal] = useState(false);
   const [docId, setDocId] = useState('');
+  const [foundApplications, setFoundApplications] = useState([]);
 
   useEffect(() => {
     const seedInitialLocalSubmissions = async () => {
@@ -201,12 +204,14 @@ export default function App() {
   };
 
   const navigateTo = (nextStep) => {
+    setNavDirection('forward');
     setStepHistory(prev => [...prev, nextStep]);
     setCurrentStep(nextStep);
   };
 
   const navigateBack = () => {
     if (stepHistory.length > 1) {
+      setNavDirection('backward');
       const newHistory = [...stepHistory];
       newHistory.pop(); // Mevcut ekranı çıkart
       const prevStep = newHistory[newHistory.length - 1];
@@ -239,43 +244,57 @@ export default function App() {
     setStepHistory([0]);
   };
 
-  const handleTrackSubmission = async (trackId) => {
+  const handleTrackSubmission = async (phoneNumber) => {
     try {
-      let foundSubmission = null;
+      let matchedSubmissions = [];
 
       if (!isMock) {
         try {
-          const docRef = doc(db, 'submissions', trackId);
-          const docSnap = await Promise.race([
-            getDoc(docRef),
+          const q = query(collection(db, 'submissions'), where('phone', '==', phoneNumber));
+          const querySnapshot = await Promise.race([
+            getDocs(q),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
-          if (docSnap.exists()) {
-            foundSubmission = { id: docSnap.id, ...docSnap.data() };
-          }
+          querySnapshot.forEach((docSnap) => {
+            matchedSubmissions.push({ id: docSnap.id, ...docSnap.data() });
+          });
         } catch (onlineErr) {
           console.warn("Online tracking failed/timed out, trying local submissions:", onlineErr);
         }
       }
 
-      if (!foundSubmission) {
-        const localStr = await AsyncStorage.getItem('@local_submissions');
-        const localSubmissions = localStr ? JSON.parse(localStr) : [];
-        const found = localSubmissions.find(sub => sub.id === trackId);
-        if (found) {
-          foundSubmission = found;
-        }
-      }
+      // Her halükarda locale de bakalım
+      const localStr = await AsyncStorage.getItem('@local_submissions');
+      const localSubmissions = localStr ? JSON.parse(localStr) : [];
+      const localMatches = localSubmissions.filter(sub => sub.phone === phoneNumber);
+      
+      // Merge online and local to prevent duplicates
+      const mergedMap = new Map();
+      matchedSubmissions.forEach(item => mergedMap.set(item.id, item));
+      localMatches.forEach(item => mergedMap.set(item.id, item));
+      
+      const finalMatches = Array.from(mergedMap.values()).sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
 
-      if (foundSubmission) {
-        setDocId(foundSubmission.id);
-        setWizardData(foundSubmission);
-        setCurrentStep(12);
+      if (finalMatches.length === 1) {
+        await AsyncStorage.setItem('@user_phone', phoneNumber);
+        setDocId(finalMatches[0].id);
+        setWizardData(finalMatches[0]);
+        setCurrentStep(12); // ShareScreen
         setStepHistory([0, 12]);
+        return true;
+      } else if (finalMatches.length > 1) {
+        await AsyncStorage.setItem('@user_phone', phoneNumber);
+        setFoundApplications(finalMatches);
+        setCurrentStep(15); // MyApplicationsScreen
+        setStepHistory([0, 15]);
         return true;
       }
 
-      Alert.alert('Başvuru Bulunamadı', 'Girdiğiniz Referans ID ile eşleşen bir başvuru kaydı bulunamadı. Lütfen ID\'nizi kontrol ediniz.');
+      Alert.alert('Başvuru Bulunamadı', 'Girdiğiniz telefon numarası ile eşleşen bir başvuru kaydı bulunamadı.');
       return false;
     } catch (error) {
       console.error("Başvuru sorgulama hatası:", error);
@@ -385,6 +404,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            navDirection={navDirection}
           />
         );
       case 7:
@@ -456,6 +476,18 @@ export default function App() {
             docId={docId}
             submissionData={wizardData}
             onReset={handleReset}
+          />
+        );
+      case 15:
+        return (
+          <MyApplicationsScreen 
+            applications={foundApplications}
+            onSelect={(selectedApp) => {
+              setDocId(selectedApp.id);
+              setWizardData(selectedApp);
+              navigateTo(12);
+            }}
+            onBack={navigateBack}
           />
         );
       default:

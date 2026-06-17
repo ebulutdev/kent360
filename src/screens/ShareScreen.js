@@ -30,25 +30,27 @@ import {
   Calendar,
   Mail
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import { db, isMock } from '../../firebaseConfig';
-import { collection, query, where, getDocs, doc, updateDoc, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, limit, arrayUnion, arrayRemove } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import StoryViewer from '../components/StoryViewer';
 
 const { width, height } = Dimensions.get('window');
 
 // B2B Premium Dark Theme Colors
 const PORTAL_COLORS = {
-  bg: '#070A13',            // Derin Obsidiyen Siyahı/Mavisi
-  card: '#131924',          // Zengin Kömür Grisi
-  border: 'rgba(197, 168, 128, 0.12)', // İnce Şampanya Altını Çerçeveler
-  accent: '#C5A880',        // Mat Fırçalanmış Şampanya Altını
-  accentLight: '#E5D5C0',   // Açık Şampanya Altını
-  accentBg: 'rgba(197, 168, 128, 0.12)',
-  textTitle: '#FFFFFF',     // Beyaz Başlıklar
-  textBody: '#94A3B8',      // Slate 300 Gövde
-  textMuted: '#64748B',     // Slate 500 Muted
+  bg: '#F8FAFC',            // Açık Arka Plan
+  card: '#FFFFFF',          // Beyaz Kart
+  border: '#E2E8F0',        // İnce Gri Çerçeveler
+  accent: '#1E293B',        // Koyu Lacivert/Siyah Vurgu
+  accentLight: '#64748B',   // Gri
+  accentBg: '#F1F5F9',
+  textTitle: '#0F172A',     // Koyu Başlıklar
+  textBody: '#334155',      // Gövde Metni
+  textMuted: '#94A3B8',     // Soluk Metin
   verified: '#10B981',      // Onay Yeşili
   verifiedBg: 'rgba(16, 185, 129, 0.12)',
 };
@@ -64,6 +66,7 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
   const [loadingOffers, setLoadingOffers] = useState(false);
   
   const [selectedContractor, setSelectedContractor] = useState(null);
+  const [storyModalVisible, setStoryModalVisible] = useState(false);
   const [contractorProjects, setContractorProjects] = useState([]);
   const [loadingContractorData, setLoadingContractorData] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
@@ -246,12 +249,15 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
         }
       }
 
-      // Check user liked projects
+      // Check user liked projects via Firebase likedBy array or local storage fallback
+      const userPhoneStr = await AsyncStorage.getItem('@user_phone');
       const likedStr = await AsyncStorage.getItem('@liked_projects');
       const likedArray = likedStr ? JSON.parse(likedStr) : [];
       const enrichedProjects = projects.map(p => ({
         ...p,
-        likedByMe: likedArray.includes(p.id)
+        likedByMe: (p.likedBy && Array.isArray(p.likedBy) && userPhoneStr) 
+                     ? p.likedBy.includes(userPhoneStr) 
+                     : likedArray.includes(p.id)
       }));
 
       setSelectedContractor(profile);
@@ -304,7 +310,20 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
         await AsyncStorage.setItem('@contractor_projects', JSON.stringify(updatedLocal));
       } else {
         const docRef = doc(db, 'contractor_projects', project.id);
-        await updateDoc(docRef, { likes: newLikes });
+        const userPhoneStr = await AsyncStorage.getItem('@user_phone');
+        const identifier = userPhoneStr || 'anonymous';
+        
+        if (isLiked) {
+          await updateDoc(docRef, { 
+            likes: newLikes,
+            likedBy: arrayUnion(identifier)
+          });
+        } else {
+          await updateDoc(docRef, { 
+            likes: newLikes,
+            likedBy: arrayRemove(identifier)
+          });
+        }
         
         const cacheKey = '@contractor_projects_' + project.uid;
         const cachedProjectsStr = await AsyncStorage.getItem(cacheKey);
@@ -420,10 +439,6 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
                   <Text style={styles.summaryVal}>{submissionData.buildingCount || 1} Adet</Text>
                 </View>
 
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Referans ID:</Text>
-                  <Text style={[styles.summaryVal, { fontFamily: FONTS.bold, color: COLORS.primary }]}>{docId}</Text>
-                </View>
               </View>
             )}
 
@@ -538,7 +553,7 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
         onRequestClose={() => setPreviewModalVisible(false)}
       >
         {selectedContractor && (
-          <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+          <SafeAreaView style={styles.modalContainer}>
             {/* Modal Header */}
             <View style={styles.modalHeaderDark}>
               <Text style={styles.modalHeaderTitleDark}>MÜTEAHHİT PROFİLİ</Text>
@@ -561,7 +576,11 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
                 <View style={styles.profileCardDark}>
                   <View style={styles.profileHeaderDark}>
                     <View style={styles.avatarDark}>
-                      <User size={36} color={PORTAL_COLORS.accent} />
+                      {selectedContractor.profilePhoto ? (
+                        <Image source={{ uri: selectedContractor.profilePhoto }} style={{ width: '100%', height: '100%', borderRadius: 32 }} />
+                      ) : (
+                        <User size={36} color={PORTAL_COLORS.accent} style={{ flexShrink: 0 }} />
+                      )}
                     </View>
                     <View style={styles.profileNameContainer}>
                       <View style={styles.companyNameRowDark}>
@@ -619,6 +638,30 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
                     ) : null}
                   </View>
 
+                  {/* Highlights (Öne Çıkanlar) Section */}
+                  {selectedContractor.stories && selectedContractor.stories.length > 0 && (
+                    <View style={{ paddingVertical: 16, borderTopWidth: 1, borderColor: PORTAL_COLORS.border }}>
+                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: PORTAL_COLORS.textTitle, marginBottom: 12, paddingHorizontal: 20 }}>Öne Çıkanlar</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}>
+                        {selectedContractor.stories.map((story, index) => (
+                          <TouchableOpacity 
+                            key={index}
+                            onPress={() => setStoryModalVisible(true)}
+                            activeOpacity={0.8}
+                            style={{ alignItems: 'center' }}
+                          >
+                            <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: PORTAL_COLORS.border, padding: 2, justifyContent: 'center', alignItems: 'center' }}>
+                              <View style={{ width: '100%', height: '100%', borderRadius: 30, overflow: 'hidden', backgroundColor: PORTAL_COLORS.bg }}>
+                                <Image source={{ uri: story }} style={{ width: '100%', height: '100%' }} />
+                              </View>
+                            </View>
+                            <Text style={{ fontSize: 11, fontFamily: FONTS.medium, color: PORTAL_COLORS.textBody, marginTop: 6 }}>Hikaye {index + 1}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
                   {/* Stats Row */}
                   <View style={styles.statsContainerDark}>
                     <View style={styles.statCardDark}>
@@ -675,7 +718,7 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
                 <View style={{ height: 40 }} />
               </ScrollView>
             )}
-          </View>
+          </SafeAreaView>
         )}
       </Modal>
 
@@ -785,6 +828,15 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
           </View>
         )}
       </Modal>
+
+      {/* Story Viewer */}
+      {selectedContractor && selectedContractor.stories && selectedContractor.stories.length > 0 && (
+        <StoryViewer 
+          visible={storyModalVisible} 
+          stories={selectedContractor.stories} 
+          onClose={() => setStoryModalVisible(false)} 
+        />
+      )}
     </View>
   );
 }
