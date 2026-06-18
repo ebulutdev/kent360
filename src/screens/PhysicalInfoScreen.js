@@ -799,7 +799,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
               </SvgLinearGradient>
             </Defs>
             <Polygon
-              points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
+              points={`60,0 220,0 265,${roofHeight * (280 / 220) * 0.35} 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)} 15,${roofHeight * (280 / 220) * 0.35}`}
               fill="url(#mansartRoofGrad)"
               stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
               strokeWidth={1.5}
@@ -1392,7 +1392,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                         </SvgLinearGradient>
                       </Defs>
                       <Polygon
-                        points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
+                        points={`60,0 220,0 265,${roofHeight * (280 / 220) * 0.35} 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)} 15,${roofHeight * (280 / 220) * 0.35}`}
                         fill="url(#mansartRoofGrad)"
                         stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
                         strokeWidth={1.5}

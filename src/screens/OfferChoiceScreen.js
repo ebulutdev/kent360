@@ -18,6 +18,7 @@ import { ArrowLeft, ArrowRight, Calculator, Coins, ShieldCheck, Briefcase, Chevr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
+import Svg, { Polygon, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -789,18 +790,20 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack, on
               {/* Roof rendering */}
               {currentRoofType === 'mansart' ? (
                 <View style={[styles.miniBuildingRoof, { height: roofHeight }]}>
-                  <View style={[styles.miniRoofTrapezoid, {
-                    borderBottomWidth: roofHeight,
-                    borderLeftWidth: Math.max(8, roofHeight * 0.58),
-                    borderRightWidth: Math.max(8, roofHeight * 0.58),
-                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B',
-                  }]} />
-                  <View style={[styles.miniRoofTrapezoidInner, {
-                    borderBottomWidth: roofHeight - 2,
-                    borderLeftWidth: Math.max(7, (roofHeight - 2) * 0.58),
-                    borderRightWidth: Math.max(7, (roofHeight - 2) * 0.58),
-                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155',
-                  }]} />
+                  <Svg height={roofHeight} width={100} viewBox={`0 0 100 ${roofHeight}`}>
+                    <Defs>
+                      <SvgLinearGradient id="miniMansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155'} stopOpacity="1" />
+                        <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#1E3A8A' : '#0F172A'} stopOpacity="1" />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <Polygon
+                      points={`20,0 80,0 95,${roofHeight * 0.35} 100,${roofHeight} 0,${roofHeight} 5,${roofHeight * 0.35}`}
+                      fill="url(#miniMansartRoofGrad)"
+                      stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+                      strokeWidth={1}
+                    />
+                  </Svg>
                 </View>
               ) : currentRoofType === 'normal' ? (
                 <View style={[styles.miniBuildingRoof, { height: roofHeight }]}>
