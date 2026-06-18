@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from
 import { Home, Landmark, ArrowLeft, ArrowRight, Grid3X3, Layers, Minus, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
+import CounterButton from '../components/CounterButton';
 
 const { width } = Dimensions.get('window');
 
@@ -143,7 +144,7 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                     ]}>
                       <IconComponent 
                         size={26} 
-                        color={isActive ? COLORS.white : (opt.id === 'tek_parsel' || opt.id === 'ada_bazli' ? COLORS.primary : COLORS.secondary)} 
+                        color={isActive ? COLORS.white : (opt.id === 'tek_parsel' || opt.id === 'ada_bazli' ? COLORS.primary : COLORS.textMuted)} 
                       />
                     </View>
                     <Text style={styles.optionTitle}>{opt.title}</Text>
@@ -157,19 +158,19 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
               <View style={styles.counterBox}>
                 <Text style={styles.counterLabel}>Sürece katılacak toplam bina adedi:</Text>
                 <View style={styles.counterControls}>
-                  <TouchableOpacity 
+                  <CounterButton 
                     style={styles.counterBtn} 
                     onPress={() => setBuildingCount(prev => Math.max(2, prev - 1))}
                   >
                     <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                  </TouchableOpacity>
+                  </CounterButton>
                   <Text style={styles.counterValue}>{buildingCount}</Text>
-                  <TouchableOpacity 
+                  <CounterButton 
                     style={styles.counterBtn} 
                     onPress={() => setBuildingCount(prev => Math.min(15, prev + 1))}
                   >
                     <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                  </TouchableOpacity>
+                  </CounterButton>
                 </View>
               </View>
             )}
@@ -179,38 +180,38 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                 <View style={styles.counterBox}>
                   <Text style={styles.counterLabel}>Sitenizde toplam kaç blok bulunuyor?</Text>
                   <View style={styles.counterControls}>
-                    <TouchableOpacity 
+                    <CounterButton 
                       style={styles.counterBtn} 
                       onPress={() => setTotalBuildingCount(prev => Math.max(1, prev - 1))}
                     >
                       <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                    </TouchableOpacity>
+                    </CounterButton>
                     <Text style={styles.counterValue}>{totalBuildingCount}</Text>
-                    <TouchableOpacity 
+                    <CounterButton 
                       style={styles.counterBtn} 
                       onPress={() => setTotalBuildingCount(prev => Math.min(30, prev + 1))}
                     >
                       <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                    </TouchableOpacity>
+                    </CounterButton>
                   </View>
                 </View>
 
                 <View style={[styles.counterBox, { marginTop: 12 }]}>
                   <Text style={styles.counterLabel}>Yenilenecek / Dönüşecek blok sayısı:</Text>
                   <View style={styles.counterControls}>
-                    <TouchableOpacity 
+                    <CounterButton 
                       style={styles.counterBtn} 
                       onPress={() => setBuildingCount(prev => Math.max(1, prev - 1))}
                     >
                       <Minus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                    </TouchableOpacity>
+                    </CounterButton>
                     <Text style={styles.counterValue}>{buildingCount}</Text>
-                    <TouchableOpacity 
+                    <CounterButton 
                       style={styles.counterBtn} 
                       onPress={() => setBuildingCount(prev => Math.min(totalBuildingCount, prev + 1))}
                     >
                       <Plus size={18} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-                    </TouchableOpacity>
+                    </CounterButton>
                   </View>
                 </View>
               </View>
@@ -222,7 +223,7 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
         </View>
       </ScrollView>
 
-      <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+      <View style={{ padding: 16, backgroundColor: COLORS.bgDark, paddingBottom: Math.max(16, insets.bottom) }}>
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
           <Text style={styles.nextBtnText}>Devam Et</Text>
           <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />

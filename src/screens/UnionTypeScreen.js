@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from 'react-native';
-import { Network, Grid3X3, ArrowLeft, ArrowRight } from 'lucide-react-native';
+import { Network, Grid3X3, ArrowLeft, ArrowRight, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
-export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
+export default function UnionTypeScreen({ data, updateData, onNext, onBack, onExit }) {
   const insets = useSafeAreaInsets();
   
   const selectUnionType = (type) => {
@@ -20,11 +20,17 @@ export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
 
       {/* FIXED HEADER at the top */}
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-        {/* Geri Butonu */}
-        <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-          <Text style={styles.backBtnText}>Geri</Text>
-        </TouchableOpacity>
+        {/* Geri & Çıkış Satırı */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={onBack}>
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+            <Text style={styles.backBtnText}>Geri</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+            <X size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
 
         {/* Stepper (3/13) */}
         <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -85,7 +91,7 @@ export default function UnionTypeScreen({ data, updateData, onNext, onBack }) {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
-                  <Network size={24} color={COLORS.secondary} style={{ flexShrink: 0 }} />
+                  <Network size={24} color={COLORS.accentPurple} style={{ flexShrink: 0 }} />
                 </View>
                 <Text style={styles.cardTitle}>Çoklu Parsel Birleşme</Text>
               </View>
@@ -107,6 +113,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,

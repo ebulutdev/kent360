@@ -16,7 +16,8 @@ import {
   PanResponder,
   TouchableWithoutFeedback,
   Animated,
-  Easing
+  Easing,
+  Appearance
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import Svg, { Polygon, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import CounterButton from '../components/CounterButton';
 
 const isSmallScreenFallback = false;
 const { width } = Dimensions.get('window');
@@ -106,7 +108,7 @@ const ActiveHighlight = React.memo(() => {
   );
 });
 
-export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, navDirection }) {
+export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, navDirection, onExit }) {
   const { width, height: screenHeight } = useWindowDimensions();
   const isSmallScreen = width < 410;
   const insets = useSafeAreaInsets();
@@ -788,8 +790,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
             <Defs>
               <SvgLinearGradient id="mansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#334155" stopOpacity="1" />
-                <Stop offset="1" stopColor="#0F172A" stopOpacity="1" />
+                <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155'} stopOpacity="1" />
+                <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#1E3A8A' : '#0F172A'} stopOpacity="1" />
               </SvgLinearGradient>
               <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
                 <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
@@ -799,7 +801,20 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
             <Polygon
               points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
               fill="url(#mansartRoofGrad)"
+              stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+              strokeWidth={1.5}
             />
+            {/* Dormer Windows - refined with frames and architectural pane grids */}
+            <Rect x="45" y={roofHeight * (280 / 220) * 0.35} width="32" height={roofHeight * (280 / 220) * 0.45} rx="2" fill="#475569" opacity={0.7} />
+            <Rect x="48" y={roofHeight * (280 / 220) * 0.39} width="26" height={roofHeight * (280 / 220) * 0.35} rx="0.5" fill="#7DD3FC" opacity={0.85} />
+            <Rect x="60.6" y={roofHeight * (280 / 220) * 0.39} width="0.8" height={roofHeight * (280 / 220) * 0.35} fill="#1E293B" opacity={0.5} />
+            <Rect x="48" y={roofHeight * (280 / 220) * 0.565 - 0.4} width="26" height="0.8" fill="#1E293B" opacity={0.5} />
+
+            <Rect x="203" y={roofHeight * (280 / 220) * 0.35} width="32" height={roofHeight * (280 / 220) * 0.45} rx="2" fill="#475569" opacity={0.7} />
+            <Rect x="206" y={roofHeight * (280 / 220) * 0.39} width="26" height={roofHeight * (280 / 220) * 0.35} rx="0.5" fill="#7DD3FC" opacity={0.85} />
+            <Rect x="218.6" y={roofHeight * (280 / 220) * 0.39} width="0.8" height={roofHeight * (280 / 220) * 0.35} fill="#1E293B" opacity={0.5} />
+            <Rect x="206" y={roofHeight * (280 / 220) * 0.565 - 0.4} width="26" height="0.8" fill="#1E293B" opacity={0.5} />
+
             <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
           </Svg>
           <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
@@ -813,8 +828,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
             <Defs>
               <SvgLinearGradient id="normalRoofGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#3E4F66" stopOpacity="1" />
-                <Stop offset="1" stopColor="#1E293B" stopOpacity="1" />
+                <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#4299E1' : '#3E4F66'} stopOpacity="1" />
+                <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#2B6CB0' : '#1E293B'} stopOpacity="1" />
               </SvgLinearGradient>
               <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
                 <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
@@ -824,6 +839,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
             <Polygon
               points={`0,${roofHeight * (280 / 220)} 140,0 280,${roofHeight * (280 / 220)}`}
               fill="url(#normalRoofGrad)"
+              stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+              strokeWidth={1.5}
             />
             {hasAttic && (
               <>
@@ -903,7 +920,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
         <View style={styles.counterWrapper}>
           <Text style={styles.counterSubLabel}>DAİRE SAYISI</Text>
           <View style={styles.counterControls}>
-            <TouchableOpacity
+            <CounterButton
               style={styles.counterBtn}
               onPress={() => {
                 setFlatsPerFloor(prev => ({
@@ -913,9 +930,9 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
               }}
             >
               <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-            </TouchableOpacity>
+            </CounterButton>
             <Text style={styles.counterValue}>{val}</Text>
-            <TouchableOpacity
+            <CounterButton
               style={styles.counterBtn}
               onPress={() => {
                 setFlatsPerFloor(prev => ({
@@ -925,7 +942,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
               }}
             >
               <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-            </TouchableOpacity>
+            </CounterButton>
           </View>
         </View>
       );
@@ -960,7 +977,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
               ]}>
                 {opt.label}
               </Text>
-              <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+              <Text style={[
+                styles.optionButtonDesc,
+                val === opt.value && styles.optionButtonDescActive
+              ]}>{opt.desc}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1007,30 +1027,32 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           </View>
 
           <Text style={[styles.subQuestionLabel, { marginTop: 12 }]}>{bIdx}. Bodrum Birim Sayısı:</Text>
-          <View style={styles.counterControlsSmall}>
-            <TouchableOpacity
-              style={styles.counterBtnSmall}
-              onPress={() => {
-                setBasementUnitCounts(prev => ({
-                  ...prev,
-                  [bIdx]: Math.max(1, (prev[bIdx] || 1) - 1)
-                }));
-              }}
-            >
-              <Minus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
-            </TouchableOpacity>
-            <Text style={styles.counterValueSmall}>{bUnitCount}</Text>
-            <TouchableOpacity
-              style={styles.counterBtnSmall}
-              onPress={() => {
-                setBasementUnitCounts(prev => ({
-                  ...prev,
-                  [bIdx]: Math.min(5, (prev[bIdx] || 1) + 1)
-                }));
-              }}
-            >
-              <Plus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
-            </TouchableOpacity>
+          <View style={{ width: '100%', alignItems: 'center', marginTop: 8 }}>
+            <View style={styles.counterControlsSmall}>
+              <CounterButton
+                style={styles.counterBtnSmall}
+                onPress={() => {
+                  setBasementUnitCounts(prev => ({
+                    ...prev,
+                    [bIdx]: Math.max(1, (prev[bIdx] || 1) - 1)
+                  }));
+                }}
+              >
+                <Minus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              </CounterButton>
+              <Text style={styles.counterValueSmall}>{bUnitCount}</Text>
+              <CounterButton
+                style={styles.counterBtnSmall}
+                onPress={() => {
+                  setBasementUnitCounts(prev => ({
+                    ...prev,
+                    [bIdx]: Math.min(5, (prev[bIdx] || 1) + 1)
+                  }));
+                }}
+              >
+                <Plus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              </CounterButton>
+            </View>
           </View>
         </View>
       );
@@ -1042,19 +1064,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>NORMAL KAT SAYISI</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.max(1, prev - 1))}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{normalFloorCount}</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.min(20, prev + 1))}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -1064,19 +1086,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>ZEMİN OTURUMU (m²)</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.max(20, prev - 5)); }}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{footprintSqm} m²</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.min(2000, prev + 5)); }}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -1086,19 +1108,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>ORTALAMA NORMAL KAT (m²)</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.max(20, prev - 5)); }}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{normalFloorSqm} m²</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.min(2000, prev + 5)); }}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -1108,19 +1130,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>ZEMİN BİRİM SAYISI</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.max(1, prev - 1))}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{groundUnitCount}</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.min(8, prev + 1))}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -1130,19 +1152,19 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>BODRUM KAT SAYISI</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.max(0, prev - 1))}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{basementCount}</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.min(5, prev + 1))}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -1175,7 +1197,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 ]}>
                   {opt.label}
                 </Text>
-                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+                <Text style={[
+                  styles.optionButtonDesc,
+                  roofType === opt.type && styles.optionButtonDescActive
+                ]}>{opt.desc}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1203,7 +1228,10 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 ]}>
                   {opt.label}
                 </Text>
-                <Text style={styles.optionButtonDesc}>{opt.desc}</Text>
+                <Text style={[
+                  styles.optionButtonDesc,
+                  hasAttic === opt.value && styles.optionButtonDescActive
+                ]}>{opt.desc}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1214,27 +1242,26 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>YENİ BİNADAKİ DAİRE SAYISI</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.max(0, prev - 1)); }}
               >
                 <Minus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{newTotalFlats}</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.min(100, prev + 1)); }}
               >
                 <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
 
       case 'confirmation':
         return (
-          <ScrollView style={styles.summaryScroll} showsVerticalScrollIndicator={false}>
-            <View style={styles.summaryCard}>
+          <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Çatı Yapısı:</Text>
                 <Text style={styles.summaryValueText}>
@@ -1285,8 +1312,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                   })}
                 </View>
               )}
-            </View>
-          </ScrollView>
+          </View>
         );
 
       default:
@@ -1310,11 +1336,17 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
 
         {/* FIXED HEADER at the top */}
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-          {/* Geri Butonu */}
-          <TouchableOpacity style={styles.backBtn} onPress={handleBackSubStep}>
-            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-            <Text style={styles.backBtnText}>Geri</Text>
-          </TouchableOpacity>
+          {/* Geri & Çıkış Satırı */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={handleBackSubStep}>
+              <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+              <Text style={styles.backBtnText}>Geri</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+              <X size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
 
           {/* Stepper showing global wizard progress (Stage 2: Building Design) */}
           <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -1351,8 +1383,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                     <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="mansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
-                          <Stop offset="0" stopColor="#334155" stopOpacity="1" />
-                          <Stop offset="1" stopColor="#0F172A" stopOpacity="1" />
+                          <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155'} stopOpacity="1" />
+                          <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#1E3A8A' : '#0F172A'} stopOpacity="1" />
                         </SvgLinearGradient>
                         <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
                           <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
@@ -1362,7 +1394,20 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                       <Polygon
                         points={`25,0 255,0 280,${roofHeight * (280 / 220)} 0,${roofHeight * (280 / 220)}`}
                         fill="url(#mansartRoofGrad)"
+                        stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+                        strokeWidth={1.5}
                       />
+                      {/* Dormer Windows - refined with frames and architectural pane grids */}
+                      <Rect x="45" y={roofHeight * (280 / 220) * 0.35} width="32" height={roofHeight * (280 / 220) * 0.45} rx="2" fill="#475569" opacity={0.7} />
+                      <Rect x="48" y={roofHeight * (280 / 220) * 0.39} width="26" height={roofHeight * (280 / 220) * 0.35} rx="0.5" fill="#7DD3FC" opacity={0.85} />
+                      <Rect x="60.6" y={roofHeight * (280 / 220) * 0.39} width="0.8" height={roofHeight * (280 / 220) * 0.35} fill="#1E293B" opacity={0.5} />
+                      <Rect x="48" y={roofHeight * (280 / 220) * 0.565 - 0.4} width="26" height="0.8" fill="#1E293B" opacity={0.5} />
+
+                      <Rect x="203" y={roofHeight * (280 / 220) * 0.35} width="32" height={roofHeight * (280 / 220) * 0.45} rx="2" fill="#475569" opacity={0.7} />
+                      <Rect x="206" y={roofHeight * (280 / 220) * 0.39} width="26" height={roofHeight * (280 / 220) * 0.35} rx="0.5" fill="#7DD3FC" opacity={0.85} />
+                      <Rect x="218.6" y={roofHeight * (280 / 220) * 0.39} width="0.8" height={roofHeight * (280 / 220) * 0.35} fill="#1E293B" opacity={0.5} />
+                      <Rect x="206" y={roofHeight * (280 / 220) * 0.565 - 0.4} width="26" height="0.8" fill="#1E293B" opacity={0.5} />
+
                       <Rect x="0" y={roofHeight * (280 / 220) - 4} width="280" height="4" rx="2" fill="url(#eavesGrad)" />
                     </Svg>
                     <View style={[styles.roofTextCapsule, { marginBottom: Math.max(1, roofHeight * 0.12) }]}>
@@ -1377,8 +1422,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                     <Svg height={roofHeight} width={220} viewBox={`0 0 280 ${roofHeight * (280 / 220)}`}>
                       <Defs>
                         <SvgLinearGradient id="normalRoofGrad" x1="0" y1="0" x2="0" y2="1">
-                          <Stop offset="0" stopColor="#3E4F66" stopOpacity="1" />
-                          <Stop offset="1" stopColor="#1E293B" stopOpacity="1" />
+                          <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#4299E1' : '#3E4F66'} stopOpacity="1" />
+                          <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#2B6CB0' : '#1E293B'} stopOpacity="1" />
                         </SvgLinearGradient>
                         <SvgLinearGradient id="eavesGrad" x1="0" y1="0" x2="1" y2="0">
                           <Stop offset="0" stopColor="#D97706" stopOpacity="1" />
@@ -1388,6 +1433,8 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                       <Polygon
                         points={`0,${roofHeight * (280 / 220)} 140,0 280,${roofHeight * (280 / 220)}`}
                         fill="url(#normalRoofGrad)"
+                        stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+                        strokeWidth={1.5}
                       />
                       {hasAttic && (
                         <>
@@ -1514,7 +1561,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           </View>
         </ScrollView>
 
-        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <View style={{ padding: 16, backgroundColor: COLORS.bgDark, paddingBottom: Math.max(16, insets.bottom) }}>
           {/* Devam Et / İleri Butonu */}
           <TouchableOpacity
             style={styles.nextBtn}
@@ -1535,12 +1582,12 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
           transparent={true}
           onRequestClose={() => setFullScreenModelVisible(false)}
         >
-          <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: Appearance.getColorScheme() === 'dark' ? 'rgba(7, 10, 16, 0.95)' : 'rgba(255,255,255,0.95)', justifyContent: 'center', alignItems: 'center' }}>
             <TouchableOpacity 
-              style={{ position: 'absolute', top: Math.max(40, insets.top + 10), right: 20, zIndex: 10, padding: 10, backgroundColor: '#E2E8F0', borderRadius: 20 }}
+              style={{ position: 'absolute', top: Math.max(40, insets.top + 10), right: 20, zIndex: 10, padding: 10, backgroundColor: Appearance.getColorScheme() === 'dark' ? '#1E293B' : '#E2E8F0', borderRadius: 20 }}
               onPress={() => setFullScreenModelVisible(false)}
             >
-              <X size={24} color="#334155" />
+              <X size={24} color={Appearance.getColorScheme() === 'dark' ? '#F8FAFC' : '#334155'} />
             </TouchableOpacity>
             
             <ScrollView 
@@ -1569,6 +1616,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,
@@ -1624,20 +1676,22 @@ const styles = StyleSheet.create({
   roofTextCapsule: {
     position: 'absolute',
     bottom: 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.bgMedium,
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 1,
     elevation: 2,
     zIndex: 20,
   },
   roofTextCapsuleText: {
     fontFamily: FONTS.bold,
-    color: '#1E293B',
+    color: COLORS.textLight,
   },
   floorsContainer: {
     backgroundColor: '#F1F5F9',
@@ -1790,13 +1844,16 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
   optionButtonTextActive: {
-    color: COLORS.secondary,
+    color: COLORS.optionActiveText,
   },
   optionButtonDesc: {
     fontFamily: FONTS.regular,
     fontSize: 10,
     color: '#64748B',
     marginTop: 2,
+  },
+  optionButtonDescActive: {
+    color: COLORS.optionActiveDesc,
   },
   counterWrapper: {
     alignItems: 'center',
@@ -1867,7 +1924,7 @@ const styles = StyleSheet.create({
   counterValue: {
     fontFamily: FONTS.bold,
     fontSize: 28,
-    color: '#1E293B',
+    color: COLORS.textLight,
     minWidth: 80,
     textAlign: 'center',
   },
@@ -1916,18 +1973,15 @@ const styles = StyleSheet.create({
   counterValueSmall: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: '#1E293B',
+    color: COLORS.textLight,
     minWidth: 30,
     textAlign: 'center',
   },
-  summaryScroll: {
-    width: '100%',
-    maxHeight: 180,
-  },
+
   summaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.bgMedium,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderRadius: 12,
     padding: 12,
   },
@@ -1936,17 +1990,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.cardBorder,
   },
   summaryLabelText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: '#64748B',
+    color: COLORS.textMuted,
   },
   summaryValueText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: '#1E293B',
+    color: COLORS.textLight,
   },
   finalQuestionBox: {
     padding: 12,
@@ -1959,7 +2013,7 @@ const styles = StyleSheet.create({
   finalQuestionText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: COLORS.secondary,
+    color: Appearance.getColorScheme() === 'dark' ? '#FDC010' : COLORS.secondary,
     textAlign: 'center',
     lineHeight: 16,
   },

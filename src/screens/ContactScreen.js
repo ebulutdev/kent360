@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { signInAnonymously } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { User, Phone, CheckCircle, ArrowLeft } from 'lucide-react-native';
+import { User, Phone, CheckCircle, ArrowLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db, isMock } from '../../firebaseConfig';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
@@ -24,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
-export default function ContactScreen({ data, updateData, onComplete, onBack }) {
+export default function ContactScreen({ data, updateData, onComplete, onBack, onExit }) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState(data.name || '');
   const [surname, setSurname] = useState(data.surname || '');
@@ -255,11 +255,17 @@ export default function ContactScreen({ data, updateData, onComplete, onBack }) 
 
         {/* FIXED HEADER at the top */}
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-          {/* Geri Butonu */}
-          <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack} disabled={loading}>
-            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-            <Text style={styles.backBtnText}>Geri</Text>
-          </TouchableOpacity>
+          {/* Geri & Çıkış Satırı */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={onBack} disabled={loading}>
+              <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+              <Text style={styles.backBtnText}>Geri</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.exitBtn} onPress={onExit} disabled={loading}>
+              <X size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
 
           {/* Stepper (9/10 or 8/10) */}
           <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -365,6 +371,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,

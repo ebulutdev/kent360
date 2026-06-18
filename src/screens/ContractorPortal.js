@@ -15,11 +15,12 @@ import {
   Alert,
   Linking,
   Image,
-  Modal
+  Modal,
+  Appearance
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers } from 'lucide-react-native';
+import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers, Settings } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Svg, { Path, Circle, Text as SvgText, Defs, Mask, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,25 +29,27 @@ import { COLORS, FONTS, globalStyles } from '../styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import StoryViewer from '../components/StoryViewer';
+import { LinearGradient } from 'expo-linear-gradient';
 
 
 const { width } = Dimensions.get('window');
 
 const PORTAL_COLORS = {
-  bg: '#F8FAFC',            // Slate 50 Light Gray
-  card: '#FFFFFF',          // Pure White
-  border: '#E2E8F0',        // Slate 200 Light Border
-  accent: '#FDC010',        // Altın Sarısı (Logo Gold)
-  accentLight: '#1E293B',   // Dark Navy
-  accentBg: 'rgba(253, 192, 16, 0.12)', // Altın sarısı düşük opaklıklı arka plan
-  textTitle: '#0F172A',     // Slate 900 (Koyu başlıklar)
-  textBody: '#1E293B',      // Slate 800 (Readability body)
-  textMuted: '#64748B',     // Slate 500 Muted
-  verified: '#10B981',      // Onay Yeşili
-  verifiedBg: 'rgba(16, 185, 129, 0.12)',
-  danger: '#EF4444',
-  dangerBg: 'rgba(239, 68, 68, 0.15)',
-  buttonText: '#1E293B'     // Koyu lacivert buton metni
+  get bg() { return Appearance.getColorScheme() === 'dark' ? '#070A10' : '#F8FAFC'; },
+  get card() { return Appearance.getColorScheme() === 'dark' ? '#131924' : '#FFFFFF'; },
+  get border() { return Appearance.getColorScheme() === 'dark' ? '#1E293B' : '#E2E8F0'; },
+  get accent() { return '#FDC010'; },
+  get accentLight() { return Appearance.getColorScheme() === 'dark' ? '#F8FAFC' : '#1E293B'; },
+  get accentBg() { return 'rgba(253, 192, 16, 0.12)'; },
+  get textTitle() { return Appearance.getColorScheme() === 'dark' ? '#F8FAFC' : '#0F172A'; },
+  get textBody() { return Appearance.getColorScheme() === 'dark' ? '#E2E8F0' : '#1E293B'; },
+  get textMuted() { return Appearance.getColorScheme() === 'dark' ? '#94A3B8' : '#64748B'; },
+  get verified() { return '#10B981'; },
+  get verifiedBg() { return 'rgba(16, 185, 129, 0.12)'; },
+  get danger() { return '#EF4444'; },
+  get dangerBg() { return 'rgba(239, 68, 68, 0.15)'; },
+  get buttonText() { return Appearance.getColorScheme() === 'dark' ? '#F8FAFC' : '#1E293B'; }
 };
 
 const COORDINATES = {
@@ -311,6 +314,33 @@ const CustomTeardropPin = ({ size = 36, isFocused = false, isCluster = false }) 
   );
 };
 
+const handleOpenPhone = (phone) => {
+  if (!phone) return;
+  const cleanPhone = phone.replace(/[^\d+]/g, '');
+  Linking.openURL(`tel:${cleanPhone}`).catch(err => {
+    Alert.alert('Hata', 'Telefon uygulaması açılamadı: ' + err.message);
+  });
+};
+
+const handleOpenAddress = (address) => {
+  if (!address) return;
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  Linking.openURL(url).catch(err => {
+    Alert.alert('Hata', 'Harita uygulaması açılamadı: ' + err.message);
+  });
+};
+
+const handleOpenWebsite = (url) => {
+  if (!url) return;
+  let cleanUrl = url.trim();
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    cleanUrl = 'https://' + cleanUrl;
+  }
+  Linking.openURL(cleanUrl).catch(err => {
+    Alert.alert('Hata', 'Web sitesi açılamadı: ' + err.message);
+  });
+};
+
 export default function ContractorPortal({ onBack }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
@@ -326,6 +356,8 @@ export default function ContractorPortal({ onBack }) {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'map'
   const [activeFilter, setActiveFilter] = useState('active'); // 'active', 'bids', 'my_jobs', 'completed'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
   const [mapFocusCoordinate, setMapFocusCoordinate] = useState(null);
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
@@ -372,10 +404,11 @@ export default function ContractorPortal({ onBack }) {
   const [editAddress, setEditAddress] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editProfilePhoto, setEditProfilePhoto] = useState(null);
+  const [editCoverPhoto, setEditCoverPhoto] = useState(null);
   const [editStories, setEditStories] = useState([]);
   const [showEditForm, setShowEditForm] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-
+  const [storyModalVisible, setStoryModalVisible] = useState(false);
   // Add Project fields
   const [addProjectModalOpen, setAddProjectModalOpen] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
@@ -427,7 +460,12 @@ export default function ContractorPortal({ onBack }) {
               phone: '0555 123 45 67',
               address: 'Fetsan Plaza Kat:4, Kadıköy / İstanbul',
               website: 'www.fetsangrup.com',
-              verified: true
+              verified: true,
+              stories: [
+                { uri: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&q=80', title: 'Şantiyemiz' },
+                { uri: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&q=80', title: 'Ofis' },
+                { uri: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80', title: 'Referanslar' }
+              ]
             };
             setContractorInfo(mockProfile);
             setEditCompanyName(mockProfile.companyName);
@@ -435,6 +473,7 @@ export default function ContractorPortal({ onBack }) {
             setEditAddress(mockProfile.address);
             setEditWebsite(mockProfile.website);
             setEditProfilePhoto(mockProfile.profilePhoto || null);
+            setEditCoverPhoto(mockProfile.coverPhoto || null);
             setEditStories(mockProfile.stories || []);
 
             // Load Mock Projects
@@ -514,6 +553,7 @@ export default function ContractorPortal({ onBack }) {
             setEditAddress(profile.address || '');
             setEditWebsite(profile.website || '');
             setEditProfilePhoto(profile.profilePhoto || null);
+            setEditCoverPhoto(profile.coverPhoto || null);
             setEditStories(profile.stories || []);
 
             // Fetch Contractor Projects with 4-second timeout
@@ -1024,6 +1064,24 @@ export default function ContractorPortal({ onBack }) {
     }
   };
 
+  const handlePickCoverPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Hata', 'Fotoğraf seçmek için izin vermeniz gerekiyor.');
+      return;
+    }
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [2, 1],
+      quality: 0.6,
+      base64: true,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setEditCoverPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
   const handlePickStories = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -1064,6 +1122,7 @@ export default function ContractorPortal({ onBack }) {
       address: editAddress.trim(),
       website: editWebsite.trim(),
       profilePhoto: editProfilePhoto,
+      coverPhoto: editCoverPhoto,
       stories: editStories
     });
 
@@ -1082,6 +1141,7 @@ export default function ContractorPortal({ onBack }) {
               address: editAddress.trim(),
               website: editWebsite.trim(),
               profilePhoto: editProfilePhoto,
+              coverPhoto: editCoverPhoto,
               stories: editStories,
               verified: false
             });
@@ -1093,6 +1153,9 @@ export default function ContractorPortal({ onBack }) {
               phone: editPhone.trim(),
               address: editAddress.trim(),
               website: editWebsite.trim(),
+              profilePhoto: editProfilePhoto,
+              coverPhoto: editCoverPhoto,
+              stories: editStories,
               createdAt: new Date().toISOString()
             });
             return docRef.id;
@@ -1604,6 +1667,25 @@ export default function ContractorPortal({ onBack }) {
   const handleClusterPress = (clusterId, latitude, longitude) => {
     if (mapRef.current) {
       try {
+        const expansionZoom = superclusterIndex.getClusterExpansionZoom(clusterId);
+        const nextLngDelta = 360 / Math.pow(2, expansionZoom);
+        
+        const currentLatDelta = mapRegion ? mapRegion.latitudeDelta : 8.5;
+        const currentLngDelta = mapRegion ? mapRegion.longitudeDelta : 12.0;
+        const nextLatDelta = nextLngDelta * (currentLatDelta / currentLngDelta);
+
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: nextLatDelta,
+          longitudeDelta: nextLngDelta,
+        }, 600);
+        return;
+      } catch (e) {
+        console.warn("handleClusterPress expansion zoom error:", e);
+      }
+
+      try {
         const leaves = superclusterIndex.getClusterLeaves(clusterId, 100);
         if (leaves && leaves.length > 0) {
           const coords = leaves.map(leaf => ({
@@ -1640,38 +1722,95 @@ export default function ContractorPortal({ onBack }) {
   ];
 
   const filteredRequests = useMemo(() => {
-    if (activeFilter === 'active') return requests;
-    if (activeFilter === 'bids') return requests.filter(r => myBids.some(b => b.submissionId === r.id));
-    return [];
-  }, [requests, myBids, activeFilter]);
+    let list = [];
+    if (activeFilter === 'active') {
+      list = requests;
+    } else if (activeFilter === 'bids') {
+      list = requests.filter(r => myBids.some(b => b.submissionId === r.id));
+    }
+
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(r => {
+        const city = (r.city || '').toLowerCase();
+        const district = (r.district || '').toLowerCase();
+        const neighborhood = (r.neighborhood || '').toLowerCase();
+        const name = (r.name || '').toLowerCase();
+        const surname = (r.surname || '').toLowerCase();
+        const address = (r.address || '').toLowerCase();
+        const buildingType = r.buildingType === 'complex' ? 'site' : 'apartman';
+        return city.includes(q) || 
+               district.includes(q) || 
+               neighborhood.includes(q) || 
+               name.includes(q) || 
+               surname.includes(q) || 
+               address.includes(q) ||
+               buildingType.includes(q);
+      });
+    }
+
+    return list;
+  }, [requests, myBids, activeFilter, searchQuery]);
 
   const renderDashboard = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.listSectionHeader}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }} style={{ flex: 1 }}>
-          {FILTERS.map(f => (
-            <TouchableOpacity 
-              key={f.id} 
-              onPress={() => setActiveFilter(f.id)}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                backgroundColor: activeFilter === f.id ? PORTAL_COLORS.accent : '#E2E8F0',
-                marginRight: 8
-              }}
-            >
-              <Text style={{
-                color: activeFilter === f.id ? '#FFF' : '#64748B',
-                fontFamily: activeFilter === f.id ? FONTS.bold : FONTS.medium,
-                fontSize: 12
-              }}>{f.label}</Text>
+        {isSearchExpanded ? (
+          <View style={styles.inlineSearchContainer}>
+            <TouchableOpacity onPress={() => {
+              setIsSearchExpanded(false);
+              setSearchQuery('');
+            }} style={styles.inlineSearchCloseBtn}>
+              <ArrowLeft size={20} color={PORTAL_COLORS.textBody} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <TouchableOpacity onPress={fetchRequests} style={{ paddingLeft: 8 }}>
-          <Text style={styles.refreshText}>Yenile</Text>
-        </TouchableOpacity>
+            <TextInput
+              style={styles.inlineSearchInput}
+              placeholder="İlçe, mahalle veya başvuru sahibi ara..."
+              placeholderTextColor={PORTAL_COLORS.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoFocus={true}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.inlineSearchClearBtn}>
+                <X size={18} color={PORTAL_COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }} style={{ flex: 1 }}>
+              {FILTERS.map(f => (
+                <TouchableOpacity 
+                  key={f.id} 
+                  onPress={() => setActiveFilter(f.id)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    backgroundColor: activeFilter === f.id ? PORTAL_COLORS.accent : PORTAL_COLORS.border,
+                    marginRight: 8
+                  }}
+                >
+                  <Text style={{
+                    color: activeFilter === f.id ? '#1E293B' : (Appearance.getColorScheme() === 'dark' ? '#FFFFFF' : '#64748B'),
+                    fontFamily: activeFilter === f.id ? FONTS.bold : FONTS.medium,
+                    fontSize: 12
+                  }}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 8 }}>
+              <TouchableOpacity onPress={() => setIsSearchExpanded(true)} style={styles.searchToggleBtn}>
+                <Search size={18} color={PORTAL_COLORS.textBody} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={fetchRequests}>
+                <Text style={styles.refreshText}>Yenile</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
 
       {loadingRequests ? (
@@ -2055,26 +2194,26 @@ export default function ContractorPortal({ onBack }) {
               <ScrollView style={styles.mapBottomCardScroll} showsVerticalScrollIndicator={false}>
                 <View style={[styles.divider, { marginVertical: 8 }]} />
 
-                <Text style={styles.expandedSectionTitle}>Yapı & Tapu Detayları</Text>
+                <Text style={[styles.expandedSectionTitle, { color: '#94A3B8', borderBottomColor: 'rgba(255, 255, 255, 0.08)' }]}>Yapı & Tapu Detayları</Text>
 
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Ada / Parsel:</Text>
-                  <Text style={[styles.detailValue, { fontSize: 12 }]}>
+                  <Text style={[styles.detailLabel, { color: '#64748B' }]}>Ada / Parsel:</Text>
+                  <Text style={[styles.detailValue, { color: '#F1F5F9', fontSize: 12 }]}>
                     {formatDeeds(selectedMapRequest.deeds)}
                   </Text>
                 </View>
 
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Daire Büyüklüğü:</Text>
-                  <Text style={[styles.detailValue, { fontSize: 12 }]}>
+                  <Text style={[styles.detailLabel, { color: '#64748B' }]}>Daire Büyüklüğü:</Text>
+                  <Text style={[styles.detailValue, { color: '#F1F5F9', fontSize: 12 }]}>
                     {sqmParts.length > 0 ? sqmParts.join(' | ') : '-'}
                   </Text>
                 </View>
 
                 {breakdown.dukkan > 0 || breakdown.depo > 0 ? (
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Ticari & Diğer Birimler:</Text>
-                    <Text style={[styles.detailValue, { fontSize: 12 }]}>
+                    <Text style={[styles.detailLabel, { color: '#64748B' }]}>Ticari & Diğer Birimler:</Text>
+                    <Text style={[styles.detailValue, { color: '#F1F5F9', fontSize: 12 }]}>
                       {breakdown.dukkan > 0 ? `${breakdown.dukkan} Dükkan ` : ''}
                       {breakdown.depo > 0 ? `${breakdown.depo} Depo ` : ''}
                     </Text>
@@ -2120,8 +2259,8 @@ export default function ContractorPortal({ onBack }) {
                         setBidModalOpen(true);
                       }}
                     >
-                      <Briefcase size={14} color={existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText} style={{ marginRight: 6 }} />
-                      <Text style={[styles.mapCardPhoneBtnText, { color: existingBid ? PORTAL_COLORS.accent : PORTAL_COLORS.buttonText }]}>
+                      <Briefcase size={14} color={existingBid ? '#FDC010' : '#1E293B'} style={{ marginRight: 6 }} />
+                      <Text style={[styles.mapCardPhoneBtnText, { color: existingBid ? '#FDC010' : '#1E293B' }]}>
                         {existingBid ? 'Güncelle' : 'Teklif'}
                       </Text>
                     </TouchableOpacity>
@@ -2184,67 +2323,119 @@ export default function ContractorPortal({ onBack }) {
 
     return (
       <View style={{ flex: 1, backgroundColor: PORTAL_COLORS.bg }}>
-        <ScrollView contentContainerStyle={[globalStyles.scrollContainer, { paddingTop: 16, paddingBottom: 100 }]}>
+        <ScrollView contentContainerStyle={[globalStyles.scrollContainer, { paddingTop: 0, paddingBottom: 100 }]}>
           {/* Company header card */}
-          <View style={styles.profileHeaderCard}>
-            <View style={styles.profileAvatarRow}>
-              <View style={[styles.avatarContainer, { overflow: 'hidden' }]}>
-                {contractorInfo?.profilePhoto ? (
-                  <Image source={{ uri: contractorInfo.profilePhoto }} style={{ width: '100%', height: '100%' }} />
-                ) : editCompanyName ? (
-                  <Text style={styles.avatarText}>
-                    {editCompanyName.substring(0, 2).toUpperCase()}
-                  </Text>
-                ) : (
-                  <User size={32} color="#94A3B8" />
-                )}
-              </View>
-              <View style={styles.profileStatsRow}>
-                <View style={styles.profileStatItem}>
-                  <Text style={styles.profileStatNumber}>{requests.length}</Text>
-                  <Text style={styles.profileStatLabel}>Talepler</Text>
-                </View>
-                <View style={styles.profileStatItem}>
-                  <Text style={styles.profileStatNumber}>{contractorProjects.length}</Text>
-                  <Text style={styles.profileStatLabel}>Projeler</Text>
-                </View>
-                <View style={styles.profileStatItem}>
-                  <Text style={styles.profileStatNumber}>{totalLikes}</Text>
-                  <Text style={styles.profileStatLabel}>Beğeniler</Text>
-                </View>
-              </View>
-            </View>
+          <View style={[styles.profileHeaderCard, { padding: 0, overflow: 'hidden', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, marginTop: 0, marginHorizontal: -20 }]}>
+            {/* Cover Banner */}
+            {contractorInfo?.coverPhoto ? (
+              <Image source={{ uri: contractorInfo.coverPhoto }} style={styles.coverBanner} />
+            ) : (
+              <LinearGradient
+                colors={['#1E293B', '#334155']}
+                style={styles.coverBanner}
+              />
+            )}
 
-            <View style={styles.profileNameBio}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.profileCompanyName}>{contractorInfo?.companyName || 'Yükleniyor...'}</Text>
-                {contractorInfo?.verified && (
-                  <View style={styles.verifiedBadge}>
-                    <Check size={10} color="#FFFFFF" />
+            <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: 10 }}>
+              <View style={styles.profileAvatarRow}>
+                <View style={[styles.avatarContainer, { width: 80, height: 80, borderRadius: 40, borderWidth: 0, marginTop: -40, overflow: 'hidden' }]}>
+                  {contractorInfo?.profilePhoto ? (
+                    <Image source={{ uri: contractorInfo.profilePhoto }} style={{ width: '100%', height: '100%' }} />
+                  ) : editCompanyName ? (
+                    <Text style={[styles.avatarText, { fontSize: 24 }]}>
+                      {editCompanyName.substring(0, 2).toUpperCase()}
+                    </Text>
+                  ) : (
+                    <User size={36} color="#94A3B8" />
+                  )}
+                </View>
+                <View style={styles.profileStatsRow}>
+                  <View style={styles.profileStatItem}>
+                    <Text style={styles.profileStatNumber}>{requests.length}</Text>
+                    <Text style={styles.profileStatLabel}>Talepler</Text>
                   </View>
-                )}
+                  <View style={styles.profileStatItem}>
+                    <Text style={styles.profileStatNumber}>{contractorProjects.length}</Text>
+                    <Text style={styles.profileStatLabel}>Projeler</Text>
+                  </View>
+                  <View style={styles.profileStatItem}>
+                    <Text style={styles.profileStatNumber}>{totalLikes}</Text>
+                    <Text style={styles.profileStatLabel}>Beğeniler</Text>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.profileEmail}>{contractorInfo?.email}</Text>
 
-              {contractorInfo?.phone ? (
-                <Text style={styles.profileInfoText}><Phone size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.phone}</Text>
-              ) : null}
-              {contractorInfo?.address ? (
-                <Text style={styles.profileInfoText}><MapPin size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.address}</Text>
-              ) : null}
-              {contractorInfo?.website ? (
-                <Text style={styles.profileInfoText}><Globe size={12} color="#94A3B8" style={{ marginRight: 6 }} /> {contractorInfo.website}</Text>
-              ) : null}
+              <View style={styles.profileNameBio}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={styles.profileCompanyName}>{contractorInfo?.companyName || 'Yükleniyor...'}</Text>
+                  {contractorInfo?.verified && (
+                    <View style={styles.verifiedBadge}>
+                      <Check size={10} color="#FFFFFF" />
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.profileEmail}>{contractorInfo?.email}</Text>
+
+                {contractorInfo?.phone ? (
+                  <TouchableOpacity
+                    onPress={() => handleOpenPhone(contractorInfo.phone)}
+                    activeOpacity={0.7}
+                    style={styles.profileInfoRow}
+                  >
+                    <Phone size={12} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={styles.profileInfoText}>{contractorInfo.phone}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {contractorInfo?.address ? (
+                  <TouchableOpacity
+                    onPress={() => handleOpenAddress(contractorInfo.address)}
+                    activeOpacity={0.7}
+                    style={styles.profileInfoRow}
+                  >
+                    <MapPin size={12} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={styles.profileInfoText}>{contractorInfo.address}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {contractorInfo?.website ? (
+                  <TouchableOpacity
+                    onPress={() => handleOpenWebsite(contractorInfo.website)}
+                    activeOpacity={0.7}
+                    style={styles.profileInfoRow}
+                  >
+                    <Globe size={12} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={styles.profileInfoText}>{contractorInfo.website}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.editProfileBtn}
-              onPress={() => setShowEditForm(prev => !prev)}
-            >
-              <Text style={styles.editProfileBtnText}>
-                {showEditForm ? 'Düzenlemeyi Kapat' : 'Profili Düzenle'}
-              </Text>
-            </TouchableOpacity>
+            {/* Highlights (Öne Çıkanlar) Section */}
+            {contractorInfo?.stories && contractorInfo.stories.length > 0 && (
+              <View style={[styles.profileHighlightsSection, { paddingHorizontal: 20 }]}>
+                <Text style={styles.profileHighlightsTitle}>Öne Çıkan Hikayeler</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.profileHighlightsList}>
+                  {contractorInfo.stories.map((story, index) => {
+                    const uri = typeof story === 'string' ? story : (story?.uri || '');
+                    const title = typeof story === 'string' ? `Hikaye ${index + 1}` : (story?.title || `Hikaye ${index + 1}`);
+                    return (
+                      <TouchableOpacity 
+                        key={index}
+                        onPress={() => setStoryModalVisible(true)}
+                        activeOpacity={0.8}
+                        style={styles.profileHighlightItem}
+                      >
+                        <View style={styles.profileHighlightRing}>
+                          <View style={styles.profileHighlightThumbContainer}>
+                            <Image source={{ uri: uri }} style={styles.profileHighlightThumb} />
+                          </View>
+                        </View>
+                        <Text style={styles.profileHighlightText}>{title}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </View>
 
           {/* Edit Profile Form */}
@@ -2274,23 +2465,62 @@ export default function ContractorPortal({ onBack }) {
                 )}
               </View>
 
-              <Text style={styles.editFormLabel}>Hikayeler (Maks 5)</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
-                {editStories.map((story, idx) => (
-                  <View key={idx} style={{ position: 'relative' }}>
-                    <Image source={{ uri: story }} style={{ width: 60, height: 80, borderRadius: 8 }} />
-                    <TouchableOpacity 
-                      onPress={() => handleRemoveStory(idx)}
-                      style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#EF4444', borderRadius: 12, padding: 2 }}
-                    >
-                      <X size={12} color="#FFF" />
-                    </TouchableOpacity>
+              <Text style={styles.editFormLabel}>Kapak Fotoğrafı</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                {editCoverPhoto ? (
+                  <Image source={{ uri: editCoverPhoto }} style={{ width: 100, height: 50, borderRadius: 6, marginRight: 12 }} />
+                ) : (
+                  <View style={{ width: 100, height: 50, borderRadius: 6, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                    <Camera size={20} color="#94A3B8" />
                   </View>
-                ))}
+                )}
+                <TouchableOpacity onPress={handlePickCoverPhoto} style={{ backgroundColor: PORTAL_COLORS.accent, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 }}>
+                  <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.medium }}>Kapak Seç</Text>
+                </TouchableOpacity>
+                {editCoverPhoto && (
+                  <TouchableOpacity onPress={() => setEditCoverPhoto(null)} style={{ marginLeft: 12 }}>
+                    <Text style={{ color: '#EF4444', fontSize: 12, fontFamily: FONTS.medium }}>Kaldır</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.editFormLabel}>Hikayeler (Maks 5)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 12 }}>
+                {editStories.map((story, idx) => {
+                  const uri = typeof story === 'string' ? story : (story?.uri || '');
+                  const title = typeof story === 'string' ? '' : (story?.title || '');
+                  return (
+                    <View key={idx} style={{ width: 70, alignItems: 'center', position: 'relative' }}>
+                      <Image source={{ uri: uri }} style={{ width: 70, height: 90, borderRadius: 8 }} />
+                      <TextInput
+                        style={{ width: '100%', fontSize: 10, fontFamily: FONTS.medium, color: PORTAL_COLORS.textTitle, backgroundColor: PORTAL_COLORS.border, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2, marginTop: 4, textAlign: 'center' }}
+                        value={title}
+                        onChangeText={(txt) => {
+                          const updated = [...editStories];
+                          if (typeof updated[idx] === 'string') {
+                            updated[idx] = { uri: updated[idx], title: txt };
+                          } else {
+                            updated[idx] = { ...updated[idx], title: txt };
+                          }
+                          setEditStories(updated);
+                        }}
+                        placeholder="Başlık"
+                        placeholderTextColor="#94A3B8"
+                        maxLength={15}
+                      />
+                      <TouchableOpacity 
+                        onPress={() => handleRemoveStory(idx)}
+                        style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#EF4444', borderRadius: 12, padding: 2, zIndex: 1 }}
+                      >
+                        <X size={12} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
                 {editStories.length < 5 && (
                   <TouchableOpacity 
                     onPress={handlePickStories}
-                    style={{ width: 60, height: 80, borderRadius: 8, borderWidth: 1, borderColor: PORTAL_COLORS.accent, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+                    style={{ width: 70, height: 90, borderRadius: 8, borderWidth: 1, borderColor: PORTAL_COLORS.accent, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Plus size={20} color={PORTAL_COLORS.accent} />
                   </TouchableOpacity>
@@ -2763,7 +2993,7 @@ export default function ContractorPortal({ onBack }) {
               paddingTop: insets.top > 0 ? insets.top + 12 : 16,
               paddingBottom: 16
             },
-            activeTab === 'map' && {
+            (activeTab === 'map' || activeTab === 'profile') && {
               position: 'absolute',
               top: 0,
               left: 0,
@@ -2778,32 +3008,48 @@ export default function ContractorPortal({ onBack }) {
             <TouchableOpacity
               style={[
                 styles.headerBackBtn,
-                activeTab === 'map' && styles.floatingHeaderBtn
+                activeTab === 'map' && styles.floatingHeaderBtn,
+                activeTab === 'profile' && styles.headerBackBtnProfile
               ]}
               onPress={onBack}
             >
-              <ArrowLeft size={20} color={PORTAL_COLORS.textTitle} />
+              <ArrowLeft size={20} color={activeTab === 'profile' ? '#000000' : activeTab === 'map' ? '#FFFFFF' : PORTAL_COLORS.textTitle} />
             </TouchableOpacity>
 
             {activeTab === 'map' ? (
               <View style={styles.floatingHeaderTitleContainer}>
                 <Text style={styles.floatingHeaderTitleText} numberOfLines={1}>{currentLocationName}</Text>
               </View>
+            ) : activeTab === 'profile' ? (
+              <View />
             ) : (
               <Text style={styles.portalHeaderTitle}>
-                {activeTab === 'list' ? 'Müteahhit Portalı' : 'Profil'}
+                Müteahhit Portalı
               </Text>
             )}
 
-            <TouchableOpacity
-              style={[
-                styles.headerLogoutBtn,
-                activeTab === 'map' && styles.floatingHeaderBtn
-              ]}
-              onPress={handleLogout}
-            >
-              <LogOut size={18} color={COLORS.danger} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {activeTab === 'profile' && (
+                <TouchableOpacity
+                  style={[
+                    styles.headerSettingsBtnProfile,
+                  ]}
+                  onPress={() => setShowEditForm(prev => !prev)}
+                >
+                  <Settings size={18} color="#000000" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.headerLogoutBtn,
+                  activeTab === 'map' && styles.floatingHeaderBtn,
+                  activeTab === 'profile' && styles.headerLogoutBtnProfile
+                ]}
+                onPress={handleLogout}
+              >
+                <LogOut size={18} color={activeTab === 'profile' ? '#B91C1C' : activeTab === 'map' ? '#EF4444' : COLORS.danger} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {activeTab === 'list' ? (
@@ -2821,6 +3067,14 @@ export default function ContractorPortal({ onBack }) {
           {renderProjectDetailModal()}
           {renderAddProjectModal()}
           {renderBidModal()}
+
+          {contractorInfo?.stories && contractorInfo.stories.length > 0 && (
+            <StoryViewer 
+              visible={storyModalVisible} 
+              stories={contractorInfo.stories} 
+              onClose={() => setStoryModalVisible(false)} 
+            />
+          )}
         </View>
       )}
     </KeyboardAvoidingView>
@@ -2870,7 +3124,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   authInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: PORTAL_COLORS.card,
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
@@ -2966,6 +3220,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     paddingHorizontal: 4,
+  },
+  inlineSearchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PORTAL_COLORS.card,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    borderRadius: 18,
+    height: 38,
+    paddingHorizontal: 10,
+  },
+  inlineSearchCloseBtn: {
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inlineSearchInput: {
+    flex: 1,
+    height: '100%',
+    fontFamily: FONTS.medium,
+    fontSize: 13,
+    color: PORTAL_COLORS.textTitle,
+    paddingVertical: 0,
+    paddingHorizontal: 4,
+  },
+  inlineSearchClearBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchToggleBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontFamily: FONTS.bold,
@@ -3180,7 +3469,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 130,
     alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(15, 23, 42, 0.90)', // Dark translucent background
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: PORTAL_COLORS.accent, // Gold border
@@ -3188,14 +3477,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
   },
   mapInfoText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: PORTAL_COLORS.textTitle,
+    color: '#FFFFFF', // White text on dark background
     letterSpacing: 0.5,
   },
   expandedSection: {
@@ -3261,7 +3550,7 @@ const styles = StyleSheet.create({
   breakdownBox: {
     flex: 1,
     minWidth: 70,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: PORTAL_COLORS.bg,
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 8,
@@ -3298,10 +3587,10 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 104 : 96,
     left: 20,
     right: 20,
-    backgroundColor: PORTAL_COLORS.card,
+    backgroundColor: '#131924', // Black/dark background
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: PORTAL_COLORS.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 16,
     maxHeight: 280,
     shadowColor: '#000000',
@@ -3319,21 +3608,21 @@ const styles = StyleSheet.create({
   },
   closeMapCardBtn: {
     padding: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 8,
   },
   mapBottomCardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: PORTAL_COLORS.textTitle,
+    color: '#FFFFFF', // White text
     marginBottom: 10,
   },
   mapBottomCardStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,
-    borderColor: PORTAL_COLORS.border,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 12,
     padding: 10,
   },
@@ -3344,13 +3633,13 @@ const styles = StyleSheet.create({
   mapStatLabel: {
     fontFamily: FONTS.medium,
     fontSize: 9.5,
-    color: PORTAL_COLORS.textMuted,
+    color: '#64748B',
     marginBottom: 2,
   },
   mapStatValue: {
     fontFamily: FONTS.bold,
     fontSize: 12.5,
-    color: PORTAL_COLORS.textTitle,
+    color: '#FFFFFF', // White text
   },
   mapBottomCardScroll: {
     flexGrow: 0,
@@ -3383,9 +3672,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: PORTAL_COLORS.card,
+    backgroundColor: '#1E293B', // Dark slate background
     borderWidth: 1.5,
-    borderColor: PORTAL_COLORS.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',
@@ -3429,6 +3718,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     flex: 1,
     marginLeft: 20,
+    marginTop: 6,
   },
   profileStatItem: {
     alignItems: 'center',
@@ -3445,7 +3735,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   profileNameBio: {
-    marginBottom: 16,
+    marginBottom: 4,
   },
   profileCompanyName: {
     fontFamily: FONTS.bold,
@@ -3467,13 +3757,15 @@ const styles = StyleSheet.create({
     color: PORTAL_COLORS.textMuted,
     marginBottom: 10,
   },
+  profileInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
   profileInfoText: {
     fontFamily: FONTS.medium,
     fontSize: 12.5,
     color: PORTAL_COLORS.textBody,
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   editProfileBtn: {
     backgroundColor: '#F1F5F9',
@@ -3491,7 +3783,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   profileInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: PORTAL_COLORS.card,
     borderWidth: 1,
     borderColor: PORTAL_COLORS.border,
     borderRadius: 12,
@@ -3751,7 +4043,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: PORTAL_COLORS.bg,
   },
   pickImageBtnText: {
     fontFamily: FONTS.bold,
@@ -3815,7 +4107,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#131924', // Dark slate background
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
@@ -3826,7 +4120,9 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   floatingHeaderTitleContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#131924', // Dark slate background
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -3843,7 +4139,145 @@ const styles = StyleSheet.create({
   floatingHeaderTitleText: {
     fontFamily: FONTS.bold,
     fontSize: 14,
+    color: '#FFFFFF', // White text
+  },
+  avatarStoryRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: PORTAL_COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -38,
+    backgroundColor: '#FFFFFF',
+  },
+  coverBanner: {
+    height: 200,
+    width: '100%',
+  },
+  headerSettingsBtnProfile: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogoutBtnProfile: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  headerBackBtnProfile: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSettingsBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCellsContainer: {
+    marginTop: 16,
+    gap: 8,
+  },
+  infoCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: PORTAL_COLORS.bg,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  infoCellLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  infoCellIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: PORTAL_COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  infoCellText: {
+    fontFamily: FONTS.medium,
+    fontSize: 13,
+    color: PORTAL_COLORS.textBody,
+    flex: 1,
+  },
+  profileHighlightsSection: {
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  profileHighlightsTitle: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
     color: PORTAL_COLORS.textTitle,
+    marginBottom: 12,
+  },
+  profileHighlightsList: {
+    gap: 16,
+  },
+  profileHighlightItem: {
+    alignItems: 'center',
+  },
+  profileHighlightRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: PORTAL_COLORS.border,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileHighlightThumbContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    overflow: 'hidden',
+    backgroundColor: PORTAL_COLORS.bg,
+  },
+  profileHighlightThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  profileHighlightText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: PORTAL_COLORS.textMuted,
+    marginTop: 6,
   },
 });
 

@@ -1,5 +1,6 @@
+import { COLORS } from './src/styles/theme';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Alert, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { 
   useFonts, 
@@ -28,10 +29,10 @@ import { db, isMock } from './firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { COLORS } from './src/styles/theme';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 export default function App() {
+  const colorScheme = useColorScheme();
   // Google Yazı Tiplerini Yükle
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
@@ -351,9 +352,9 @@ export default function App() {
   if (showContractorPortal) {
     return (
       <SafeAreaProvider initialWindowMetrics={initialWindowMetrics}>
-        <View style={[styles.appContainer, { backgroundColor: '#F8FAFC' }]}>
+        <View style={[styles.appContainer, { backgroundColor: COLORS.bgDark }]}>
           <ContractorPortal onBack={() => setShowContractorPortal(false)} />
-          <StatusBar style="dark" />
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </View>
       </SafeAreaProvider>
     );
@@ -386,6 +387,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 3:
@@ -395,6 +397,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 4:
@@ -405,6 +408,7 @@ export default function App() {
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
             navDirection={navDirection}
+            onExit={handleReset}
           />
         );
       case 7:
@@ -414,6 +418,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 8:
@@ -423,6 +428,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 9:
@@ -432,6 +438,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 10:
@@ -441,6 +448,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 13:
@@ -450,6 +458,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 14:
@@ -459,6 +468,7 @@ export default function App() {
             updateData={updateWizardData}
             onNext={() => handleNextTransition()}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 11:
@@ -468,6 +478,7 @@ export default function App() {
             updateData={updateWizardData}
             onComplete={handleComplete}
             onBack={navigateBack}
+            onExit={handleReset}
           />
         );
       case 12:
@@ -499,7 +510,7 @@ export default function App() {
     <SafeAreaProvider initialWindowMetrics={initialWindowMetrics}>
       <View style={styles.appContainer}>
         {renderScreen()}
-        <StatusBar style="light" />
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       </View>
     </SafeAreaProvider>
   );

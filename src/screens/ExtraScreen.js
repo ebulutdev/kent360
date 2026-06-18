@@ -12,13 +12,13 @@ import {
   TouchableWithoutFeedback,
   Keyboard
 } from 'react-native';
-import { UploadCloud, FileText, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react-native';
+import { UploadCloud, FileText, CheckCircle2, ArrowLeft, ArrowRight, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
-export default function ExtraScreen({ data, updateData, onNext, onBack }) {
+export default function ExtraScreen({ data, updateData, onNext, onBack, onExit }) {
   const insets = useSafeAreaInsets();
   const [pdfFile, setPdfFile] = useState(data.pdfFile || null);
 
@@ -51,11 +51,17 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
 
         {/* FIXED HEADER at the top */}
         <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-          {/* Geri Butonu */}
-          <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-            <Text style={styles.backBtnText}>Geri</Text>
-          </TouchableOpacity>
+          {/* Geri & Çıkış Satırı */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={onBack}>
+              <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+              <Text style={styles.backBtnText}>Geri</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+              <X size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
 
           {/* Stepper (7/10) */}
           <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -131,7 +137,7 @@ export default function ExtraScreen({ data, updateData, onNext, onBack }) {
             </View>
           </TouchableWithoutFeedback>
         </ScrollView>
-        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <View style={{ padding: 16, backgroundColor: COLORS.bgDark, paddingBottom: Math.max(16, insets.bottom) }}>
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
             <Text style={styles.nextBtnText}>Devam Et</Text>
             <ArrowRight size={20} color={COLORS.white} style={{ flexShrink: 0 }} />
@@ -148,6 +154,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,
@@ -181,7 +192,7 @@ const styles = StyleSheet.create({
     borderColor: '#CBD5E1',
     borderStyle: 'dashed',
     borderRadius: 14,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     paddingVertical: 28,
     alignItems: 'center',
     justifyContent: 'center',

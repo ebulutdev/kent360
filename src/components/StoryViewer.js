@@ -83,7 +83,7 @@ export default function StoryViewer({ visible, stories = [], onClose }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.container}>
         <TouchableWithoutFeedback onPress={handlePress}>
-          <Image source={{ uri: stories[currentIndex] }} style={styles.image} resizeMode="contain" />
+          <Image source={{ uri: typeof stories[currentIndex] === 'string' ? stories[currentIndex] : (stories[currentIndex]?.uri || '') }} style={styles.image} resizeMode="contain" />
         </TouchableWithoutFeedback>
 
         {/* Progress Bars */}

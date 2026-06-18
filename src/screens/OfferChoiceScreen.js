@@ -11,9 +11,10 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
-  Alert
+  Alert,
+  Appearance
 } from 'react-native';
-import { ArrowLeft, ArrowRight, Calculator, Coins, ShieldCheck, Briefcase, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Calculator, Coins, ShieldCheck, Briefcase, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
@@ -44,7 +45,7 @@ const getUnitDetails = (unit) => {
   };
 };
 
-export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) {
+export default function OfferChoiceScreen({ data, updateData, onNext, onBack, onExit }) {
   const insets = useSafeAreaInsets();
   const [showCalculator, setShowCalculator] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -654,7 +655,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
     // Dynamic color coding & layout builder for the mini-kroki boundaries
     const renderMiniFacadeSlot = (key, baseStyle, textStyleOverrides = {}) => {
       const fac = facades[key] || { type: 'ekle', name: '', distance: '' };
-      let bgStyle = { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' };
+      let bgStyle = { backgroundColor: COLORS.bgDark, borderColor: COLORS.cardBorder };
       let textColor = '#475569';
       let titlePrefix = '';
 
@@ -792,13 +793,13 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
                     borderBottomWidth: roofHeight,
                     borderLeftWidth: Math.max(8, roofHeight * 0.58),
                     borderRightWidth: Math.max(8, roofHeight * 0.58),
-                    borderBottomColor: '#1E293B',
+                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B',
                   }]} />
                   <View style={[styles.miniRoofTrapezoidInner, {
                     borderBottomWidth: roofHeight - 2,
                     borderLeftWidth: Math.max(7, (roofHeight - 2) * 0.58),
                     borderRightWidth: Math.max(7, (roofHeight - 2) * 0.58),
-                    borderBottomColor: '#334155',
+                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155',
                   }]} />
                 </View>
               ) : currentRoofType === 'normal' ? (
@@ -807,13 +808,13 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
                     borderBottomWidth: roofHeight,
                     borderLeftWidth: 45,
                     borderRightWidth: 45,
-                    borderBottomColor: '#1E293B',
+                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B',
                   }]} />
                   <View style={[styles.miniRoofTriangleInner, {
                     borderBottomWidth: roofHeight - 2,
                     borderLeftWidth: 43,
                     borderRightWidth: 43,
-                    borderBottomColor: '#334155',
+                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#4299E1' : '#334155',
                   }]} />
                 </View>
               ) : null}
@@ -1140,11 +1141,17 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack }) 
     <View style={globalStyles.container}>
       {/* FIXED HEADER at the top */}
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-        {/* Geri Butonu */}
-        <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={handleBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-          <Text style={styles.backBtnText}>Geri</Text>
-        </TouchableOpacity>
+        {/* Geri & Çıkış Satırı */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={handleBack}>
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+            <Text style={styles.backBtnText}>Geri</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+            <X size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
 
         {/* Stepper Tracker (8/10 or 7/10) */}
         <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -1330,6 +1337,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignSelf: 'flex-start',
   },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   backBtnText: {
     fontFamily: FONTS.medium,
     fontSize: 15,
@@ -1363,7 +1375,7 @@ const styles = StyleSheet.create({
   },
   premiumChoiceCard: {
     borderColor: '#CCFBF1',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
   },
   choiceHeader: {
     flexDirection: 'row',
@@ -1585,7 +1597,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   tableRowOdd: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
   },
   tableHeaderRow: {
     backgroundColor: '#F1F5F9',
@@ -1616,9 +1628,9 @@ const styles = StyleSheet.create({
   },
   summaryBoxHalf: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -1633,7 +1645,7 @@ const styles = StyleSheet.create({
   summaryBoxValue: {
     fontFamily: FONTS.bold,
     fontSize: 14.5,
-    color: '#0F172A',
+    color: COLORS.textLight,
     textAlign: 'center',
   },
 
@@ -1642,7 +1654,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1688,9 +1700,9 @@ const styles = StyleSheet.create({
 
   // SUMMARY CARD
   summaryCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
@@ -1926,7 +1938,7 @@ const styles = StyleSheet.create({
   },
   reportVisualizerBox: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
@@ -2222,9 +2234,9 @@ const styles = StyleSheet.create({
   },
   dashboardSummaryBox: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderLeftWidth: 4,
     borderRadius: 8,
     padding: 12,

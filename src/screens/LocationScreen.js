@@ -9,7 +9,8 @@ import {
   Dimensions, 
   SafeAreaView,
   ScrollView,
-  Alert
+  Alert,
+  useWindowDimensions
 } from 'react-native';
 import { MapPin, ChevronDown, ArrowLeft, ArrowRight, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,8 +32,9 @@ otherCities.forEach(c => {
   LOCATION_DATA[c] = citiesData[c];
 });
 
-export default function LocationScreen({ data, updateData, onNext, onBack }) {
+export default function LocationScreen({ data, updateData, onNext, onBack, onExit }) {
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [selectedCity, setSelectedCity] = useState(data.city || '');
   const [selectedDistrict, setSelectedDistrict] = useState(data.district || '');
   
@@ -77,11 +79,17 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
 
       {/* FIXED HEADER at the top */}
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-        {/* Geri Butonu */}
-        <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-          <Text style={styles.backBtnText}>Geri</Text>
-        </TouchableOpacity>
+        {/* Geri & Çıkış Satırı */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={onBack}>
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+            <Text style={styles.backBtnText}>Geri</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+            <X size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
 
         {/* Stepper (3/10) */}
         <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -146,7 +154,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
         </View>
         </View>
         </ScrollView>
-        <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+        <View style={{ padding: 16, backgroundColor: COLORS.bgDark, paddingBottom: Math.max(16, insets.bottom) }}>
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
             <Text style={styles.nextBtnText}>Devam Et</Text>
             <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
@@ -166,7 +174,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
             activeOpacity={1}
             onPress={() => setModalVisible(false)}
           />
-          <SafeAreaView style={styles.modalContent}>
+          <View style={[styles.modalContent, { height: screenHeight * 0.5 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {activeSelectType === 'city' ? 'İl Seçiniz' : 'İlçe Seçiniz'}
@@ -189,7 +197,7 @@ export default function LocationScreen({ data, updateData, onNext, onBack }) {
                 </TouchableOpacity>
               )}
             />
-          </SafeAreaView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -202,6 +210,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,
@@ -238,7 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgMedium,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORS.cardBorder,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 16,
@@ -246,7 +259,7 @@ const styles = StyleSheet.create({
   triggerText: {
     fontFamily: FONTS.medium,
     fontSize: 16,
-    color: '#0F172A',
+    color: COLORS.textLight,
   },
   placeholderText: {
     color: COLORS.textMuted,
@@ -277,7 +290,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     borderTopWidth: 1,
     borderColor: COLORS.cardBorder,
-    maxHeight: height * 0.6,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -299,12 +311,12 @@ const styles = StyleSheet.create({
   listItem: {
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: COLORS.cardBorder,
   },
   listItemText: {
     fontFamily: FONTS.medium,
     fontSize: 16,
-    color: '#0F172A',
+    color: COLORS.textLight,
   },
   glow: {
     position: 'absolute',

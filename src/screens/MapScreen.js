@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import { MapPin, ArrowLeft, ArrowRight, Compass } from 'lucide-react-native';
+import { MapPin, ArrowLeft, ArrowRight, Compass, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
@@ -42,7 +42,7 @@ const COORDINATES = {
   }
 };
 
-export default function MapScreen({ data, updateData, onNext, onBack }) {
+export default function MapScreen({ data, updateData, onNext, onBack, onExit }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const [pinCoordinate, setPinCoordinate] = useState(data.coordinates || null);
@@ -189,11 +189,17 @@ export default function MapScreen({ data, updateData, onNext, onBack }) {
     <View style={globalStyles.container}>
       {/* FIXED HEADER at the top */}
       <View style={{ paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20 }}>
-        {/* Geri Butonu */}
-        <TouchableOpacity style={[styles.backBtn, { marginBottom: 12 }]} onPress={onBack}>
-          <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
-          <Text style={styles.backBtnText}>Geri</Text>
-        </TouchableOpacity>
+        {/* Geri & Çıkış Satırı */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <TouchableOpacity style={[styles.backBtn, { marginBottom: 0 }]} onPress={onBack}>
+            <ArrowLeft size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
+            <Text style={styles.backBtnText}>Geri</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
+            <X size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
 
         {/* Stepper (5/10) */}
         <View style={[globalStyles.stepperContainer, { marginBottom: 10 }]}>
@@ -262,7 +268,7 @@ export default function MapScreen({ data, updateData, onNext, onBack }) {
         </View>
       </ScrollView>
 
-      <View style={{ padding: 16, backgroundColor: '#F8FAFC', paddingBottom: Math.max(16, insets.bottom) }}>
+      <View style={{ padding: 16, backgroundColor: COLORS.bgDark, paddingBottom: Math.max(16, insets.bottom) }}>
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
           <Text style={styles.nextBtnText}>Devam Et</Text>
           <ArrowRight size={20} color={COLORS.secondary} style={{ flexShrink: 0 }} />
@@ -278,6 +284,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     alignSelf: 'flex-start',
+  },
+  exitBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontFamily: FONTS.medium,

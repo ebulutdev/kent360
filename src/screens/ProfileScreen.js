@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Modal,
+  Appearance,
   Animated,
   PanResponder,
   Alert,
@@ -28,16 +29,69 @@ import {
   Home,
   Percent,
   HelpCircle,
-  FileText
+  FileText,
+  ZoomIn
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, globalStyles } from '../styles/theme';
+import CounterButton from '../components/CounterButton';
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   const insets = useSafeAreaInsets();
+
+  const [fullScreenBlueprintVisible, setFullScreenBlueprintVisible] = useState(false);
+  const [blueprintScale, setBlueprintScale] = useState(1.0);
+
+  const startScale = useRef(1.0);
+  const currentScale = useRef(1.0);
+  const initialDistance = useRef(null);
+
+  const handleOpenZoom = () => {
+    triggerHaptic();
+    setFullScreenBlueprintVisible(true);
+    setBlueprintScale(1.0);
+    startScale.current = 1.0;
+    currentScale.current = 1.0;
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onPanResponderGrant: (evt) => {
+        if (evt.nativeEvent.touches.length === 2) {
+          const { pageX: x1, pageY: y1 } = evt.nativeEvent.touches[0];
+          const { pageX: x2, pageY: y2 } = evt.nativeEvent.touches[1];
+          initialDistance.current = Math.hypot(x2 - x1, y2 - y1);
+          startScale.current = currentScale.current;
+        }
+      },
+      onPanResponderMove: (evt) => {
+        if (evt.nativeEvent.touches.length === 2 && initialDistance.current) {
+          const { pageX: x1, pageY: y1 } = evt.nativeEvent.touches[0];
+          const { pageX: x2, pageY: y2 } = evt.nativeEvent.touches[1];
+          const distance = Math.hypot(x2 - x1, y2 - y1);
+          const zoomFactor = distance / initialDistance.current;
+          
+          let newScale = startScale.current * zoomFactor;
+          newScale = Math.max(0.8, Math.min(newScale, 3.0));
+          setBlueprintScale(newScale);
+          currentScale.current = newScale;
+        }
+      },
+      onPanResponderRelease: () => {
+        startScale.current = currentScale.current;
+        initialDistance.current = null;
+      },
+      onPanResponderTerminate: () => {
+        startScale.current = currentScale.current;
+        initialDistance.current = null;
+      }
+    })
+  ).current;
 
   // Get first deed/floor info if available to pre-populate ProfileScreen
   const firstDeed = useMemo(() => {
@@ -383,9 +437,10 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
   );
 
   // Render a customizable slot on the parsel
-  const renderFacadeSlot = (key, positionStyles) => {
+  const renderFacadeSlot = (key, isZoomView = false) => {
     const facade = facades[key] || { type: 'ekle', name: '', distance: '' };
     const isHorizontal = key === 'top' || key === 'bottom';
+    const isEkle = facade.type === 'ekle';
 
     const handlePress = () => {
       triggerHaptic();
@@ -395,76 +450,334 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
       }
     };
 
+    const typeTop = facades.top?.type || 'ekle';
+    const typeBottom = facades.bottom?.type || 'ekle';
+    const typeLeft = facades.left?.type || 'ekle';
+    const typeRight = facades.right?.type || 'ekle';
+
+    const getPriority = (t) => {
+      if (t === 'yol') return 3;
+      if (t === 'bahce') return 2;
+      if (t === 'bitisik' || t === 'arsa') return 1;
+      return 0; // 'ekle'
+    };
+
+    const pTop = getPriority(typeTop);
+    const pBottom = getPriority(typeBottom);
+    const pLeft = getPriority(typeLeft);
+    const pRight = getPriority(typeRight);
+
+    const isRoad = (t) => t === 'yol';
+    const isMergeable = (t) => t === 'yol' || t === 'arsa' || t === 'bahce';
+    const mTop = isMergeable(typeTop);
+    const mBottom = isMergeable(typeBottom);
+    const mLeft = isMergeable(typeLeft);
+    const mRight = isMergeable(typeRight);
+
+    let finalStyle = {};
+    let sidewalkStyle = {};
+    let dynamicLineExt = {};
+
+    let borderTopWidth = 1;
+    let borderBottomWidth = 1;
+    let borderLeftWidth = 1;
+    let borderRightWidth = 1;
+    let borderTopLeftRadius = 5;
+    let borderTopRightRadius = 5;
+    let borderBottomLeftRadius = 5;
+    let borderBottomRightRadius = 5;
+
+    if (isEkle) {
+      if (isHorizontal) {
+        finalStyle = { left: 89, width: 150, height: 40, top: key === 'top' ? 20 : 268 };
+      } else {
+        finalStyle = { top: 89, height: 150, width: 40, left: key === 'left' ? 20 : 268 };
+      }
+    } else {
+      if (key === 'top') {
+        const pTopSelf = getPriority(facade.type);
+        let startLeft = pTopSelf >= pLeft ? 0 : 60;
+        let endRight = pTopSelf >= pRight ? 328 : 268;
+        let width = endRight - startLeft;
+
+        if (mTop && mLeft) {
+          if (pTopSelf >= pLeft) {
+            borderBottomLeftRadius = 0;
+          } else {
+            borderLeftWidth = 0;
+            borderTopLeftRadius = 0;
+            borderBottomLeftRadius = 0;
+            startLeft -= 1.5;
+            width += 1.5;
+          }
+        }
+        if (mTop && mRight) {
+          if (pTopSelf >= pRight) {
+            borderBottomRightRadius = 0;
+          } else {
+            borderRightWidth = 0;
+            borderTopRightRadius = 0;
+            borderBottomRightRadius = 0;
+            width += 1.5;
+          }
+        }
+
+        if (facade.type === 'yol') {
+          sidewalkStyle = [
+            styles.sidewalkBottom,
+            { left: isRoad(typeLeft) ? 60 : 0, right: isRoad(typeRight) ? 60 : 0 }
+          ];
+          if (mLeft && pLeft > pTopSelf) dynamicLineExt.left = -30;
+          if (mRight && pRight > pTopSelf) dynamicLineExt.right = -30;
+        }
+
+        finalStyle = { left: startLeft, width, height: 60, top: 0 };
+
+      } else if (key === 'bottom') {
+        const pBottomSelf = getPriority(facade.type);
+        let startLeft = pBottomSelf >= pLeft ? 0 : 60;
+        let endRight = pBottomSelf >= pRight ? 328 : 268;
+        let width = endRight - startLeft;
+
+        if (mBottom && mLeft) {
+          if (pBottomSelf >= pLeft) {
+            borderTopLeftRadius = 0;
+          } else {
+            borderLeftWidth = 0;
+            borderTopLeftRadius = 0;
+            borderBottomLeftRadius = 0;
+            startLeft -= 1.5;
+            width += 1.5;
+          }
+        }
+        if (mBottom && mRight) {
+          if (pBottomSelf >= pRight) {
+            borderTopRightRadius = 0;
+          } else {
+            borderRightWidth = 0;
+            borderTopRightRadius = 0;
+            borderBottomRightRadius = 0;
+            width += 1.5;
+          }
+        }
+
+        if (facade.type === 'yol') {
+          sidewalkStyle = [
+            styles.sidewalkTop,
+            { left: isRoad(typeLeft) ? 60 : 0, right: isRoad(typeRight) ? 60 : 0 }
+          ];
+          if (mLeft && pLeft > pBottomSelf) dynamicLineExt.left = -30;
+          if (mRight && pRight > pBottomSelf) dynamicLineExt.right = -30;
+        }
+
+        finalStyle = { left: startLeft, width, height: 60, top: 268 };
+
+      } else if (key === 'left') {
+        const pLeftSelf = getPriority(facade.type);
+        let startTop = pTop >= pLeftSelf ? 60 : 0;
+        let endBottom = pBottom >= pLeftSelf ? 268 : 328;
+        let height = endBottom - startTop;
+
+        if (mLeft && mTop) {
+          if (pTop >= pLeftSelf) {
+            borderTopWidth = 0;
+            borderTopLeftRadius = 0;
+            borderTopRightRadius = 0;
+            startTop -= 1.5;
+            height += 1.5;
+          } else {
+            borderTopRightRadius = 0;
+          }
+        }
+        if (mLeft && mBottom) {
+          if (pBottom >= pLeftSelf) {
+            borderBottomWidth = 0;
+            borderBottomLeftRadius = 0;
+            borderBottomRightRadius = 0;
+            height += 1.5;
+          } else {
+            borderBottomRightRadius = 0;
+          }
+        }
+
+        if (facade.type === 'yol') {
+          sidewalkStyle = [
+            styles.sidewalkRight,
+            {
+              top: (mLeft && mTop && pTop >= pLeftSelf) ? 60 : 0,
+              bottom: (mLeft && mBottom && pBottom >= pLeftSelf) ? 60 : 0
+            }
+          ];
+          if (mTop && pTop >= pLeftSelf) dynamicLineExt.top = -30;
+          if (mBottom && pBottom >= pLeftSelf) dynamicLineExt.bottom = -30;
+        }
+
+        finalStyle = { top: startTop, height, width: 60, left: 0 };
+
+      } else if (key === 'right') {
+        const pRightSelf = getPriority(facade.type);
+        let startTop = pTop >= pRightSelf ? 60 : 0;
+        let endBottom = pBottom >= pRightSelf ? 268 : 328;
+        let height = endBottom - startTop;
+
+        if (mRight && mTop) {
+          if (pTop >= pRightSelf) {
+            borderTopWidth = 0;
+            borderTopLeftRadius = 0;
+            borderTopRightRadius = 0;
+            startTop -= 1.5;
+            height += 1.5;
+          } else {
+            borderTopLeftRadius = 0;
+          }
+        }
+        if (mRight && mBottom) {
+          if (pBottom >= pRightSelf) {
+            borderBottomWidth = 0;
+            borderBottomLeftRadius = 0;
+            borderBottomRightRadius = 0;
+            height += 1.5;
+          } else {
+            borderBottomLeftRadius = 0;
+          }
+        }
+
+        if (facade.type === 'yol') {
+          sidewalkStyle = [
+            styles.sidewalkLeft,
+            {
+              top: (mRight && mTop && pTop >= pRightSelf) ? 60 : 0,
+              bottom: (mRight && mBottom && pBottom >= pRightSelf) ? 60 : 0
+            }
+          ];
+          if (mTop && pTop >= pRightSelf) dynamicLineExt.top = -30;
+          if (mBottom && pBottom >= pRightSelf) dynamicLineExt.bottom = -30;
+        }
+
+        finalStyle = { top: startTop, height, width: 60, left: 268 };
+      }
+    }
+
+    const borderOverrides = {
+      borderTopWidth,
+      borderBottomWidth,
+      borderLeftWidth,
+      borderRightWidth,
+      borderTopLeftRadius,
+      borderTopRightRadius,
+      borderBottomLeftRadius,
+      borderBottomRightRadius,
+    };
+
+    const SlotComponent = View;
+
     if (facade.type === 'ekle') {
       return (
-        <TouchableOpacity
-          style={[styles.facadeSlot, styles.facadeAdd, positionStyles]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
-          <Plus size={10} color={COLORS.primary} style={{ flexShrink: 0,  marginBottom: 2 }} />
+        <SlotComponent style={[styles.facadeSlot, styles.facadeAdd, finalStyle]}>
+          <Plus size={10} color={COLORS.primary} style={{ flexShrink: 0, marginBottom: 2 }} />
           <Text style={styles.facadeAddText}>CEPHE EKLE</Text>
-        </TouchableOpacity>
+        </SlotComponent>
       );
     }
 
     if (facade.type === 'bitisik') {
       return (
-        <TouchableOpacity
-          style={[styles.facadeSlot, styles.facadeBitisik, positionStyles]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
+        <SlotComponent style={[styles.facadeSlot, styles.facadeBitisik, finalStyle, borderOverrides]}>
           {renderHatchLines()}
           <View style={styles.bitisikLineOverlay} />
           <Text style={styles.facadeBitisikText}>BİTİŞİK BİNA</Text>
-        </TouchableOpacity>
+        </SlotComponent>
       );
     }
 
     if (facade.type === 'bahce') {
       return (
-        <TouchableOpacity
-          style={[styles.facadeSlot, styles.facadeBahce, positionStyles]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
+        <SlotComponent style={[styles.facadeSlot, styles.facadeBahce, finalStyle, borderOverrides]}>
           {renderTrees()}
           <Text style={styles.facadeBahceText} numberOfLines={1}>
             {facade.name || 'BAHÇE'} {facade.distance ? `(${facade.distance})` : ''}
           </Text>
-        </TouchableOpacity>
+        </SlotComponent>
       );
     }
 
     if (facade.type === 'arsa') {
       return (
-        <TouchableOpacity
-          style={[styles.facadeSlot, styles.facadeArsa, positionStyles]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
+        <SlotComponent style={[styles.facadeSlot, styles.facadeArsa, finalStyle, borderOverrides]}>
+          <View style={
+            isHorizontal 
+              ? (key === 'top' ? styles.arsaLineBottom : styles.arsaLineTop)
+              : (key === 'left' ? styles.arsaLineRight : styles.arsaLineLeft)
+          } />
           <Text style={styles.facadeArsaText}>BOŞ ARSA</Text>
-        </TouchableOpacity>
+        </SlotComponent>
       );
     }
 
     if (facade.type === 'yol') {
       return (
-        <TouchableOpacity
-          style={[styles.facadeSlot, styles.facadeYol, positionStyles]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
-          <View style={isHorizontal ? styles.roadLineHorizontal : styles.roadLineVertical} />
+        <SlotComponent style={[styles.facadeSlot, styles.facadeYol, finalStyle, borderOverrides]}>
+          <View style={[isHorizontal ? styles.roadLineHorizontal : styles.roadLineVertical, dynamicLineExt]} />
+          
+          <View style={sidewalkStyle}>
+            <View style={isHorizontal ? styles.curbJointsHorizontal : styles.curbJointsVertical} />
+          </View>
+ 
           <Text style={styles.facadeYolText} numberOfLines={1}>
             {facade.name || 'SOKAK'}
           </Text>
-        </TouchableOpacity>
+        </SlotComponent>
       );
     }
 
     return null;
+  };
+
+  const renderDrawing = (isZoomView = false) => {
+    const CenterComponent = View;
+    return (
+      <View style={styles.krokiContainer}>
+        {/* Surrounding Facades */}
+        {renderFacadeSlot('top', isZoomView)}
+        {renderFacadeSlot('bottom', isZoomView)}
+        {renderFacadeSlot('left', isZoomView)}
+        {renderFacadeSlot('right', isZoomView)}
+
+        {/* Dimension Containers */}
+        <View style={styles.dimHeightContainer}>
+          <View style={styles.dimHeightLine} />
+          <Text style={styles.dimTextBg}>{buildingDepth}m</Text>
+        </View>
+        <View style={styles.dimWidthContainer}>
+          <View style={styles.dimWidthLine} />
+          <Text style={styles.dimTextBg}>{buildingWidth}m</Text>
+        </View>
+
+        {/* Main Center Plot */}
+        <CenterComponent style={[
+          styles.centerBuildingBox,
+          {
+            backgroundColor: COLORS.bgMedium,
+            borderColor: COLORS.cardBorder,
+          }
+        ]}>
+          <Text style={styles.titleLabel}>PARSEL DETAYI</Text>
+          <Text style={[styles.mainInfo, { color: COLORS.textLight }]}>ADA {adaNo} / PARSEL {parselNo}</Text>
+
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{totalArea} m²</Text>
+          </View>
+
+          <Text style={[styles.subText, { color: COLORS.textLight }]}>{buildingWidth}m x {buildingDepth}m</Text>
+          <Text style={[styles.subText, { color: COLORS.textLight }]}>
+            {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
+          </Text>
+          <Text style={[styles.subTextMuted, { color: COLORS.textMuted }]}>
+            Hesap Tipi: {mutType === 'MÜT YOK' ? 'Paysız' : `${contractorFlatCount} Daire`}
+          </Text>
+        </CenterComponent>
+      </View>
+    );
   };
 
   // Rendering custom input controls based on active sub-step
@@ -576,7 +889,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>MÜTEAHHİTE KALACAK DAİRE</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -584,9 +897,9 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Minus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{contractorFlatCount}</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -594,7 +907,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -604,7 +917,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>YATAY GENİŞLİK (EN)</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -616,9 +929,9 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{buildingWidth} m</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -630,7 +943,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
@@ -640,7 +953,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
           <View style={styles.counterWrapper}>
             <Text style={styles.counterSubLabel}>DÜŞEY DERİNLİK (BOY)</Text>
             <View style={styles.counterControls}>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -652,9 +965,9 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
               <Text style={styles.counterValue}>{buildingDepth} m</Text>
-              <TouchableOpacity
+              <CounterButton
                 style={styles.counterBtn}
                 onPress={() => {
                   triggerHaptic();
@@ -666,14 +979,14 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 }}
               >
                 <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
-              </TouchableOpacity>
+              </CounterButton>
             </View>
           </View>
         );
 
       case 'confirmation':
         return (
-          <ScrollView style={styles.summaryScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.summaryContainer}>
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabelText}>Ada / Parsel No:</Text>
@@ -718,7 +1031,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 </Text>
               </View>
             </View>
-          </ScrollView>
+          </View>
         );
 
       default:
@@ -770,52 +1083,32 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                 <Text style={styles.previewCardTitle}>PARSEL VE CEPHE ÖNİZLEME (2D)</Text>
 
                 <View style={styles.centeredVisualizerWrapper}>
-                  <View style={styles.krokiContainer}>
-                    {renderGridLines()}
-
-                    {/* Drafting Crosshairs */}
-                    <View style={[styles.crosshair, styles.chTopLeft]} />
-                    <View style={[styles.crosshair, styles.chTopRight]} />
-                    <View style={[styles.crosshair, styles.chBottomLeft]} />
-                    <View style={[styles.crosshair, styles.chBottomRight]} />
-
-                    {/* Surrounding Facades */}
-                    {renderFacadeSlot('top', styles.posTop)}
-                    {renderFacadeSlot('bottom', styles.posBottom)}
-                    {renderFacadeSlot('left', styles.posLeft)}
-                    {renderFacadeSlot('right', styles.posRight)}
-
-                    {/* Dimension Containers */}
-                    <View style={styles.dimHeightContainer}>
-                      <Text style={styles.dimText} numberOfLines={1}>{buildingDepth}m</Text>
-                    </View>
-                    <View style={styles.dimWidthContainer}>
-                      <Text style={styles.dimText}>{buildingWidth}m</Text>
-                    </View>
-
-                    {/* Main Center Plot */}
+                  <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={handleOpenZoom}
+                    style={{ position: 'relative' }}
+                  >
+                    {renderDrawing(false)}
                     <TouchableOpacity
-                      style={styles.centerBuildingBox}
-                      onPress={handleCenterBoxPress}
                       activeOpacity={0.8}
+                      onPress={handleOpenZoom}
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        backgroundColor: 'rgba(15, 30, 54, 0.8)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(56, 189, 248, 0.4)',
+                        padding: 8,
+                        borderRadius: 20,
+                        zIndex: 50
+                      }}
                     >
-                      <Text style={styles.titleLabel}>PARSEL DETAYI</Text>
-                      <Text style={styles.mainInfo}>ADA {adaNo} / PARSEL {parselNo}</Text>
-
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{totalArea} m²</Text>
-                      </View>
-
-                      <Text style={styles.subText}>{buildingWidth}m x {buildingDepth}m</Text>
-                      <Text style={styles.subText}>
-                        {floorsCount} Kat {isMansart ? '(Mansart Çatılı)' : (hasAtticRoof ? '(Çatı Piyesli)' : '')}
-                      </Text>
-                      <Text style={styles.subTextMuted}>
-                        Hesap Tipi: {mutType === 'MÜT YOK' ? 'Paysız' : `${contractorFlatCount} Daire`}
-                      </Text>
+                      <ZoomIn size={16} color="#FFF" />
                     </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 </View>
+
               </View>
 
               {/* 2. SORU/CEVAP KARTI */}
@@ -841,14 +1134,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   {renderQuestionControls()}
                 </View>
 
-                {/* Onay Sorusu Banner'ı */}
-                {currentQuestionStep === STEPS.length - 1 && (
-                  <View style={styles.finalQuestionBox}>
-                    <Text style={styles.finalQuestionText}>
-                      Oluşturduğunuz parsel profili sizin parseliniz ile aynı mı? Onaylıyor musunuz?
-                    </Text>
-                  </View>
-                )}
+
 
               </View>
             </View>
@@ -866,6 +1152,38 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* BÜYÜTÜLMÜŞ ÖNİZLEME MODALI */}
+        <Modal
+          visible={fullScreenBlueprintVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setFullScreenBlueprintVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: Appearance.getColorScheme() === 'dark' ? 'rgba(7, 10, 16, 0.95)' : 'rgba(255, 255, 255, 0.95)', justifyContent: 'center', alignItems: 'center' }}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100, paddingHorizontal: 100 }}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+            >
+              <View {...panResponder.panHandlers} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: blueprintScale }] }}>
+                  {renderDrawing(true)}
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: Math.max(40, insets.top + 10), right: 20, zIndex: 99, padding: 10, backgroundColor: Appearance.getColorScheme() === 'dark' ? '#1E293B' : '#E2E8F0', borderRadius: 20 }}
+              onPress={() => setFullScreenBlueprintVisible(false)}
+              activeOpacity={0.7}
+            >
+              <X size={24} color={Appearance.getColorScheme() === 'dark' ? '#F8FAFC' : '#334155'} />
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -903,19 +1221,10 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   krokiContainer: {
-    width: 360,
-    height: 360,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
+    width: 328,
+    height: 328,
     position: 'relative',
     alignSelf: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
   },
   gridLine: {
     position: 'absolute',
@@ -1028,7 +1337,7 @@ const styles = StyleSheet.create({
   facadeYolText: {
     fontSize: 7.5,
     fontFamily: FONTS.bold,
-    color: COLORS.white,
+    color: COLORS.textLight,
     backgroundColor: COLORS.bgMedium,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -1040,21 +1349,47 @@ const styles = StyleSheet.create({
   },
   dimHeightContainer: {
     position: 'absolute',
-    left: 5,
-    top: 95,
-    height: 170,
+    left: 63,
+    top: 89,
+    height: 150,
     width: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 15,
   },
   dimWidthContainer: {
     position: 'absolute',
-    left: 95,
-    top: 340,
-    width: 170,
-    height: 16,
+    left: 89,
+    top: 242,
+    width: 150,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 15,
+  },
+  dimWidthLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 9,
+    height: 1,
+    backgroundColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  dimHeightLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 9,
+    width: 1,
+    backgroundColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  dimTextBg: {
+    fontFamily: FONTS.medium,
+    fontSize: 9,
+    color: '#38BDF8',
+    backgroundColor: COLORS.cardBg,
+    paddingHorizontal: 4,
+    zIndex: 2,
   },
   dimText: {
     fontFamily: FONTS.medium,
@@ -1063,41 +1398,38 @@ const styles = StyleSheet.create({
   },
   centerBuildingBox: {
     position: 'absolute',
-    left: 95,
-    top: 95,
-    width: 170,
-    height: 170,
+    left: 89,
+    top: 89,
+    width: 150,
+    height: 150,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#D97706',
-    backgroundColor: '#FFFFFF',
+    borderStyle: 'solid',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 8,
     zIndex: 10,
-    shadowColor: '#D97706',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
   },
   titleLabel: {
     fontFamily: FONTS.bold,
     fontSize: 10,
-    color: '#D97706',
+    color: '#38BDF8',
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   mainInfo: {
     fontFamily: FONTS.bold,
     fontSize: 13,
-    color: COLORS.textLight,
     marginBottom: 6,
     textAlign: 'center',
   },
   badge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -1106,18 +1438,16 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: '#D97706',
+    color: '#38BDF8',
   },
   subText: {
     fontFamily: FONTS.medium,
     fontSize: 11,
-    color: COLORS.textLight,
     marginBottom: 2,
   },
   subTextMuted: {
     fontFamily: FONTS.regular,
     fontSize: 10,
-    color: COLORS.textMuted,
     marginTop: 4,
   },
   crosshair: {
@@ -1185,7 +1515,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
   optionButtonTextActive: {
-    color: COLORS.secondary,
+    color: COLORS.optionActiveText,
   },
   optionButtonDesc: {
     fontFamily: FONTS.regular,
@@ -1227,17 +1557,17 @@ const styles = StyleSheet.create({
   counterValue: {
     fontFamily: FONTS.bold,
     fontSize: 28,
-    color: '#1E293B',
+    color: COLORS.textLight,
     minWidth: 80,
     textAlign: 'center',
   },
   inlineInputWrapper: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     width: '100%',
   },
   inlineInputLabel: {
@@ -1247,9 +1577,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   inlineTextInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.bgMedium,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORS.cardBorder,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -1258,14 +1588,13 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     width: '100%',
   },
-  summaryScroll: {
+  summaryContainer: {
     width: '100%',
-    maxHeight: 180,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.bgMedium,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderRadius: 12,
     padding: 12,
   },
@@ -1274,34 +1603,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.cardBorder,
   },
   summaryLabelText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: '#64748B',
+    color: COLORS.textMuted,
   },
   summaryValueText: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: '#1E293B',
+    color: COLORS.textLight,
   },
-  finalQuestionBox: {
-    padding: 12,
-    backgroundColor: 'rgba(253, 192, 16, 0.05)',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 8,
-    marginBottom: 16,
-    width: '100%',
-  },
-  finalQuestionText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: COLORS.secondary,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
+
   nextBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: 14,

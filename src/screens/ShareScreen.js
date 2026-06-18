@@ -643,21 +643,25 @@ export default function ShareScreen({ docId, submissionData, onReset }) {
                     <View style={{ paddingVertical: 16, borderTopWidth: 1, borderColor: PORTAL_COLORS.border }}>
                       <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: PORTAL_COLORS.textTitle, marginBottom: 12, paddingHorizontal: 20 }}>Öne Çıkanlar</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}>
-                        {selectedContractor.stories.map((story, index) => (
-                          <TouchableOpacity 
-                            key={index}
-                            onPress={() => setStoryModalVisible(true)}
-                            activeOpacity={0.8}
-                            style={{ alignItems: 'center' }}
-                          >
-                            <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: PORTAL_COLORS.border, padding: 2, justifyContent: 'center', alignItems: 'center' }}>
-                              <View style={{ width: '100%', height: '100%', borderRadius: 30, overflow: 'hidden', backgroundColor: PORTAL_COLORS.bg }}>
-                                <Image source={{ uri: story }} style={{ width: '100%', height: '100%' }} />
+                        {selectedContractor.stories.map((story, index) => {
+                          const uri = typeof story === 'string' ? story : (story?.uri || '');
+                          const title = typeof story === 'string' ? `Hikaye ${index + 1}` : (story?.title || `Hikaye ${index + 1}`);
+                          return (
+                            <TouchableOpacity 
+                              key={index}
+                              onPress={() => setStoryModalVisible(true)}
+                              activeOpacity={0.8}
+                              style={{ alignItems: 'center' }}
+                            >
+                              <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: PORTAL_COLORS.border, padding: 2, justifyContent: 'center', alignItems: 'center' }}>
+                                <View style={{ width: '100%', height: '100%', borderRadius: 30, overflow: 'hidden', backgroundColor: PORTAL_COLORS.bg }}>
+                                  <Image source={{ uri: uri }} style={{ width: '100%', height: '100%' }} />
+                                </View>
                               </View>
-                            </View>
-                            <Text style={{ fontSize: 11, fontFamily: FONTS.medium, color: PORTAL_COLORS.textBody, marginTop: 6 }}>Hikaye {index + 1}</Text>
-                          </TouchableOpacity>
-                        ))}
+                              <Text style={{ fontSize: 11, fontFamily: FONTS.medium, color: PORTAL_COLORS.textBody, marginTop: 6 }}>{title}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </ScrollView>
                     </View>
                   )}
@@ -858,9 +862,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   summaryBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     borderRadius: 14,
     padding: 16,
     marginBottom: 24,
@@ -871,7 +875,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.cardBorder,
     paddingBottom: 6,
   },
   summaryRow: {
@@ -969,7 +973,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   emptyOffersBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#CBD5E1',
@@ -1058,7 +1062,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
   offerNotesBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.bgDark,
     borderRadius: 10,
     padding: 10,
     marginBottom: 12,
