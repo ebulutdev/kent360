@@ -656,7 +656,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack, on
     // Dynamic color coding & layout builder for the mini-kroki boundaries
     const renderMiniFacadeSlot = (key, baseStyle, textStyleOverrides = {}) => {
       const fac = facades[key] || { type: 'ekle', name: '', distance: '' };
-      let bgStyle = { backgroundColor: COLORS.bgDark, borderColor: COLORS.cardBorder };
+      let bgStyle = { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' };
       let textColor = '#475569';
       let titlePrefix = '';
 
@@ -793,14 +793,14 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack, on
                   <Svg height={roofHeight} width={100} viewBox={`0 0 100 ${roofHeight}`}>
                     <Defs>
                       <SvgLinearGradient id="miniMansartRoofGrad" x1="0" y1="0" x2="0" y2="1">
-                        <Stop offset="0" stopColor={Appearance.getColorScheme() === 'dark' ? '#3B82F6' : '#334155'} stopOpacity="1" />
-                        <Stop offset="1" stopColor={Appearance.getColorScheme() === 'dark' ? '#1E3A8A' : '#0F172A'} stopOpacity="1" />
+                        <Stop offset="0" stopColor="#334155" stopOpacity="1" />
+                        <Stop offset="1" stopColor="#0F172A" stopOpacity="1" />
                       </SvgLinearGradient>
                     </Defs>
                     <Polygon
                       points={`20,0 80,0 95,${roofHeight * 0.35} 100,${roofHeight} 0,${roofHeight} 5,${roofHeight * 0.35}`}
                       fill="url(#miniMansartRoofGrad)"
-                      stroke={Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B'}
+                      stroke="#1E293B"
                       strokeWidth={1}
                     />
                   </Svg>
@@ -811,13 +811,13 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack, on
                     borderBottomWidth: roofHeight,
                     borderLeftWidth: 45,
                     borderRightWidth: 45,
-                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#93C5FD' : '#1E293B',
+                    borderBottomColor: '#1E293B',
                   }]} />
                   <View style={[styles.miniRoofTriangleInner, {
                     borderBottomWidth: roofHeight - 2,
                     borderLeftWidth: 43,
                     borderRightWidth: 43,
-                    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#4299E1' : '#334155',
+                    borderBottomColor: '#334155',
                   }]} />
                 </View>
               ) : null}
@@ -1041,7 +1041,7 @@ export default function OfferChoiceScreen({ data, updateData, onNext, onBack, on
           <View style={[styles.controlRow, { alignItems: 'center' }]}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.controlLabel}>Müteahhit Payı (%)</Text>
-              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#64748B', marginTop: 4 }}>
                 Tahmini Karşılık: ~{normalArea > 0 ? (totals.contractorShareArea / normalArea).toFixed(1) : 0} Kat
               </Text>
             </View>
@@ -1435,7 +1435,7 @@ const styles = StyleSheet.create({
   sectionHeading: {
     fontFamily: FONTS.bold,
     fontSize: 10.5,
-    color: COLORS.textMuted,
+    color: '#64748B',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   tableRowOdd: {
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
   },
   tableHeaderRow: {
     backgroundColor: '#F1F5F9',
@@ -1631,9 +1631,9 @@ const styles = StyleSheet.create({
   },
   summaryBoxHalf: {
     flex: 1,
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -1641,14 +1641,14 @@ const styles = StyleSheet.create({
   summaryBoxLabel: {
     fontFamily: FONTS.bold,
     fontSize: 10,
-    color: COLORS.textMuted,
+    color: '#64748B',
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   summaryBoxValue: {
     fontFamily: FONTS.bold,
     fontSize: 14.5,
-    color: COLORS.textLight,
+    color: '#0F172A',
     textAlign: 'center',
   },
 
@@ -1657,7 +1657,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
   controlLabel: {
     fontFamily: FONTS.bold,
     fontSize: 12,
-    color: COLORS.textLight,
+    color: '#0F172A',
   },
   stepperInputWrapper: {
     flexDirection: 'row',
@@ -1691,11 +1691,11 @@ const styles = StyleSheet.create({
   stepBtnText: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: COLORS.textLight,
+    color: '#0F172A',
   },
   numericValueText: {
     fontSize: 13,
-    color: COLORS.textLight,
+    color: '#0F172A',
     fontWeight: 'bold',
     textAlign: 'center',
     width: 75,
@@ -1703,9 +1703,9 @@ const styles = StyleSheet.create({
 
   // SUMMARY CARD
   summaryCard: {
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
@@ -1722,13 +1722,13 @@ const styles = StyleSheet.create({
   summaryItemLabel: {
     fontFamily: FONTS.bold,
     fontSize: 9,
-    color: COLORS.textMuted,
+    color: '#64748B',
     textTransform: 'uppercase',
   },
   summaryItemValue: {
     fontFamily: FONTS.medium,
     fontSize: 11.5,
-    color: COLORS.textLight,
+    color: '#0F172A',
     marginTop: 1,
   },
 
@@ -1900,7 +1900,7 @@ const styles = StyleSheet.create({
   pdfHeaderSub: {
     fontFamily: FONTS.medium,
     fontSize: 9,
-    color: COLORS.textMuted,
+    color: '#64748B',
     letterSpacing: 1.2,
     marginTop: 2,
   },
@@ -1910,7 +1910,7 @@ const styles = StyleSheet.create({
   pdfMetaText: {
     fontFamily: FONTS.medium,
     fontSize: 9.5,
-    color: COLORS.textLight,
+    color: '#0F172A',
     marginBottom: 2,
   },
   pdfStatusBadge: {
@@ -1941,7 +1941,7 @@ const styles = StyleSheet.create({
   },
   reportVisualizerBox: {
     flex: 1,
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
@@ -2036,7 +2036,7 @@ const styles = StyleSheet.create({
   visualizerBoxFooter: {
     fontFamily: FONTS.medium,
     fontSize: 9.5,
-    color: COLORS.textMuted,
+    color: '#64748B',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -2182,14 +2182,14 @@ const styles = StyleSheet.create({
   signatureLabel: {
     fontFamily: FONTS.bold,
     fontSize: 8.5,
-    color: COLORS.textMuted,
+    color: '#64748B',
     letterSpacing: 1,
     marginBottom: 4,
   },
   signatureTitle: {
     fontFamily: FONTS.medium,
     fontSize: 10,
-    color: COLORS.textLight,
+    color: '#0F172A',
     marginBottom: 10,
   },
   signatureLine: {
@@ -2201,7 +2201,7 @@ const styles = StyleSheet.create({
   signatureName: {
     fontFamily: FONTS.regular,
     fontSize: 8,
-    color: COLORS.textMuted,
+    color: '#64748B',
   },
   officialStampBox: {
     flexDirection: 'row',
@@ -2223,7 +2223,7 @@ const styles = StyleSheet.create({
   },
   priceInput: {
     fontSize: 13,
-    color: COLORS.textLight,
+    color: '#0F172A',
     fontWeight: 'bold',
     textAlign: 'center',
     width: 95,
@@ -2237,9 +2237,9 @@ const styles = StyleSheet.create({
   },
   dashboardSummaryBox: {
     flex: 1,
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
     borderLeftWidth: 4,
     borderRadius: 8,
     padding: 12,
@@ -2352,7 +2352,7 @@ const styles = StyleSheet.create({
   legalDisclaimerText: {
     fontFamily: FONTS.regular,
     fontSize: 9,
-    color: '#94A3B8',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 13,
     marginTop: 14,

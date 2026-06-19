@@ -896,7 +896,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   setContractorFlatCount(prev => Math.max(0, prev - 1));
                 }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color={COLORS.textLight} />
               </CounterButton>
               <Text style={styles.counterValue}>{contractorFlatCount}</Text>
               <CounterButton
@@ -906,7 +906,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   setContractorFlatCount(prev => Math.min(200, prev + 1));
                 }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color={COLORS.textLight} />
               </CounterButton>
             </View>
           </View>
@@ -928,7 +928,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{buildingWidth} m</Text>
               <CounterButton
@@ -942,7 +942,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -964,7 +964,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{buildingDepth} m</Text>
               <CounterButton
@@ -978,7 +978,7 @@ export default function ProfileScreen({ data, updateData, onNext, onBack }) {
                   });
                 }}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

@@ -2,21 +2,21 @@ import { StyleSheet, Appearance } from 'react-native';
 
 const RAW_COLORS = {
   bgDark: { dark: '#070A10FF', light: '#F8FAFCFF' },
-  bgMedium: { dark: '#131924FF', light: '#FFFFFFFF' },
-  cardBg: { dark: '#131924FF', light: '#FFFFFFFF' },
-  cardBorder: { dark: '#1E293BFF', light: '#E2E8F0FF' },
+  bgMedium: { dark: '#131924FF', light: '#FFFFFFFE' },
+  cardBg: { dark: '#131924FE', light: '#FFFFFFFD' },
+  cardBorder: { dark: '#1E293BFE', light: '#E2E8F0FF' },
   primary: { dark: '#FDC010FF', light: '#FDC010FF' },
-  secondary: { dark: '#1E293BFF', light: '#1E293BFF' },
+  secondary: { dark: '#1E293BFD', light: '#1E293BFE' },
   textLight: { dark: '#F8FAFCFF', light: '#0F172AFF' },
   textMuted: { dark: '#94A3B8FF', light: '#64748BFF' },
-  textDark: { dark: '#E2E8F0FF', light: '#1E293BFF' },
+  textDark: { dark: '#E2E8F0FF', light: '#1E293BFD' },
   danger: { dark: '#EF4444FF', light: '#EF4444FF' },
   success: { dark: '#10B981FF', light: '#10B981FF' },
   white: { dark: '#FFFFFFFF', light: '#FFFFFFFF' },
   glassBg: { dark: 'rgba(19, 25, 36, 0.85)', light: 'rgba(255, 255, 255, 0.85)' },
-  optionActiveText: { dark: '#FDC010FF', light: '#1E293BFF' },
-  optionActiveDesc: { dark: '#E2E8F0FF', light: '#475569FF' },
-  accentPurple: { dark: '#A78BFAFF', light: '#1E293BFF' }
+  optionActiveText: { dark: '#FDC010FE', light: '#1E293BFC' },
+  optionActiveDesc: { dark: '#E2E8F0FE', light: '#475569FF' },
+  accentPurple: { dark: '#A78BFAFF', light: '#1E293BFB' }
 };
 
 let accessedColorsQueue = [];

@@ -82,9 +82,9 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
 
   const options = [
     { id: 'tek_parsel', title: 'Tek Parsel', icon: Home, bg: 'rgba(253, 192, 16, 0.08)' },
-    { id: 'coklu_parsel', title: 'Çoklu Parsel', icon: Grid3X3, bg: 'rgba(30, 41, 59, 0.08)' },
+    { id: 'coklu_parsel', title: 'Çoklu Parsel', icon: Grid3X3, bg: 'rgba(253, 192, 16, 0.08)' },
     { id: 'ada_bazli', title: 'Ada Bazlı', icon: Layers, bg: 'rgba(253, 192, 16, 0.08)' },
-    { id: 'site_emsali', title: 'Site Emsali', icon: Landmark, bg: 'rgba(30, 41, 59, 0.08)' }
+    { id: 'site_emsali', title: 'Site Emsali', icon: Landmark, bg: 'rgba(253, 192, 16, 0.08)' }
   ];
 
   return (
@@ -144,7 +144,7 @@ export default function BuildingTypeScreen({ data, updateData, onNext, onBack })
                     ]}>
                       <IconComponent 
                         size={26} 
-                        color={isActive ? COLORS.white : (opt.id === 'tek_parsel' || opt.id === 'ada_bazli' ? COLORS.primary : COLORS.textMuted)} 
+                        color={isActive ? COLORS.white : COLORS.primary} 
                       />
                     </View>
                     <Text style={styles.optionTitle}>{opt.title}</Text>
@@ -320,11 +320,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    backgroundColor: COLORS.cardBorder,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   counterValue: {
     fontFamily: FONTS.bold,

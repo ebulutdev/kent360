@@ -929,7 +929,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 }));
               }}
             >
-              <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             </CounterButton>
             <Text style={styles.counterValue}>{val}</Text>
             <CounterButton
@@ -941,7 +941,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 }));
               }}
             >
-              <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
             </CounterButton>
           </View>
         </View>
@@ -1038,7 +1038,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                   }));
                 }}
               >
-                <Minus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={14} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValueSmall}>{bUnitCount}</Text>
               <CounterButton
@@ -1050,7 +1050,7 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                   }));
                 }}
               >
-                <Plus size={14} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={14} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1068,14 +1068,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.max(1, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{normalFloorCount}</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setNormalFloorCount(prev => Math.min(20, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1090,14 +1090,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.max(20, prev - 5)); }}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{footprintSqm} m²</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFootprintSqm(prev => Math.min(2000, prev + 5)); }}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1112,14 +1112,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.max(20, prev - 5)); }}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{normalFloorSqm} m²</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNormalFloorSqm(prev => Math.min(2000, prev + 5)); }}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1134,14 +1134,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.max(1, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{groundUnitCount}</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setGroundUnitCount(prev => Math.min(8, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1156,14 +1156,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.max(0, prev - 1))}
               >
-                <Minus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Minus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
               <Text style={styles.counterValue}>{basementCount}</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => setBasementCount(prev => Math.min(5, prev + 1))}
               >
-                <Plus size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+                <Plus size={20} color={COLORS.textLight} style={{ flexShrink: 0 }} />
               </CounterButton>
             </View>
           </View>
@@ -1246,14 +1246,14 @@ export default function PhysicalInfoScreen({ data, updateData, onNext, onBack, n
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.max(0, prev - 1)); }}
               >
-                <Minus size={20} color="#FFFFFF" />
+                <Minus size={20} color={COLORS.textLight} />
               </CounterButton>
               <Text style={styles.counterValue}>{newTotalFlats}</Text>
               <CounterButton
                 style={styles.counterBtn}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNewTotalFlats(prev => Math.min(100, prev + 1)); }}
               >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color={COLORS.textLight} />
               </CounterButton>
             </View>
           </View>
@@ -1912,7 +1912,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1966,7 +1966,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },

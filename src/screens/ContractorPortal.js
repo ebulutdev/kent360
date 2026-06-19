@@ -16,11 +16,12 @@ import {
   Linking,
   Image,
   Modal,
-  Appearance
+  Appearance,
+  useColorScheme
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, limit, onSnapshot, orderBy, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers, Settings } from 'lucide-react-native';
+import { Briefcase, Mail, Lock, Building, ArrowLeft, LogOut, Search, MapPin, X, Phone, Compass, Globe, User, Plus, Heart, Calendar, Camera, Check, Layers, Settings, RefreshCw } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Svg, { Path, Circle, Text as SvgText, Defs, Mask, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,7 @@ const { width } = Dimensions.get('window');
 
 const PORTAL_COLORS = {
   get bg() { return Appearance.getColorScheme() === 'dark' ? '#070A10' : '#F8FAFC'; },
+  get bgTransparent() { return Appearance.getColorScheme() === 'dark' ? 'rgba(7, 10, 16, 0)' : 'rgba(248, 250, 252, 0)'; },
   get card() { return Appearance.getColorScheme() === 'dark' ? '#131924' : '#FFFFFF'; },
   get border() { return Appearance.getColorScheme() === 'dark' ? '#1E293B' : '#E2E8F0'; },
   get accent() { return '#FDC010'; },
@@ -343,6 +345,7 @@ const handleOpenWebsite = (url) => {
 
 export default function ContractorPortal({ onBack }) {
   const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
   const mapRef = useRef(null);
   const carouselRef = useRef(null);
   const [isRegister, setIsRegister] = useState(false);
@@ -430,6 +433,11 @@ export default function ContractorPortal({ onBack }) {
   const [bidNotes, setBidNotes] = useState('');
   const [submittingBid, setSubmittingBid] = useState(false);
   const [myBids, setMyBids] = useState([]);
+
+  const isPhoneVisible = (submissionId) => {
+    const bid = myBids.find(b => b.submissionId === submissionId);
+    return !!(bid && bid.approvedByMalik === true);
+  };
 
   useEffect(() => {
     let unsubscribeAuth = null;
@@ -1780,33 +1788,67 @@ export default function ContractorPortal({ onBack }) {
           </View>
         ) : (
           <>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }} style={{ flex: 1 }}>
-              {FILTERS.map(f => (
-                <TouchableOpacity 
-                  key={f.id} 
-                  onPress={() => setActiveFilter(f.id)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                    backgroundColor: activeFilter === f.id ? PORTAL_COLORS.accent : PORTAL_COLORS.border,
-                    marginRight: 8
-                  }}
-                >
-                  <Text style={{
-                    color: activeFilter === f.id ? '#1E293B' : (Appearance.getColorScheme() === 'dark' ? '#FFFFFF' : '#64748B'),
-                    fontFamily: activeFilter === f.id ? FONTS.bold : FONTS.medium,
-                    fontSize: 12
-                  }}>{f.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <TouchableOpacity onPress={() => setIsSearchExpanded(true)} style={[styles.searchToggleBtn, { marginRight: 8 }]}>
+              <Search size={18} color={PORTAL_COLORS.textBody} />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, position: 'relative', flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }}>
+              <LinearGradient
+                colors={[PORTAL_COLORS.bg, PORTAL_COLORS.bgTransparent]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 16,
+                  zIndex: 2,
+                }}
+              />
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }} style={{ flex: 1 }}>
+                {FILTERS.map(f => (
+                  <TouchableOpacity 
+                    key={f.id} 
+                    onPress={() => setActiveFilter(f.id)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      backgroundColor: activeFilter === f.id ? PORTAL_COLORS.accent : PORTAL_COLORS.border,
+                      marginRight: 8
+                    }}
+                  >
+                    <Text style={{
+                      color: activeFilter === f.id ? '#1E293B' : (Appearance.getColorScheme() === 'dark' ? '#FFFFFF' : '#64748B'),
+                      fontFamily: activeFilter === f.id ? FONTS.bold : FONTS.medium,
+                      fontSize: 12
+                    }}>{f.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <LinearGradient
+                colors={[PORTAL_COLORS.bgTransparent, PORTAL_COLORS.bg]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 16,
+                  zIndex: 2,
+                }}
+              />
+            </View>
+
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 8 }}>
-              <TouchableOpacity onPress={() => setIsSearchExpanded(true)} style={styles.searchToggleBtn}>
-                <Search size={18} color={PORTAL_COLORS.textBody} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={fetchRequests}>
-                <Text style={styles.refreshText}>Yenile</Text>
+              <TouchableOpacity onPress={fetchRequests} style={styles.searchToggleBtn}>
+                <RefreshCw size={18} color={PORTAL_COLORS.textBody} />
               </TouchableOpacity>
             </View>
           </>
@@ -1854,7 +1896,7 @@ export default function ContractorPortal({ onBack }) {
                   <Text style={styles.reqDetailText}>Blok/Bina: {item.buildingCount || 1}</Text>
                   <Text style={styles.reqDetailText}>Daire: {breakdown.daire}</Text>
                   <Text style={styles.reqDetailText}>
-                    Başvuru: {item.name || ''} {isExpanded ? (item.surname || '') : (item.surname ? item.surname[0] + '.' : '')}
+                    Başvuru: {item.name || ''} {isPhoneVisible(item.id) ? (item.surname || '') : (item.surname ? item.surname[0] + '.' : '')}
                   </Text>
                 </View>
 
@@ -1867,17 +1909,33 @@ export default function ContractorPortal({ onBack }) {
                     <View style={styles.detailRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.detailLabel}>Malik Adı Soyadı:</Text>
-                        <Text style={styles.detailValue}>{item.name || ''} {item.surname || ''}</Text>
+                        <Text style={styles.detailValue}>
+                          {isPhoneVisible(item.id) 
+                            ? `${item.name || ''} ${item.surname || ''}` 
+                            : `${item.name || ''} ${item.surname ? item.surname[0] + '.' : ''}`
+                          }
+                        </Text>
                       </View>
                       {item.phone && (
-                        <TouchableOpacity
-                          style={styles.phoneCallBtn}
-                          onPress={() => handleCallPhone(item.phone)}
-                        >
-                          <Text style={styles.phoneCallBtnText}>Ara: {item.phone}</Text>
-                        </TouchableOpacity>
+                        isPhoneVisible(item.id) ? (
+                          <TouchableOpacity
+                            style={styles.phoneCallBtn}
+                            onPress={() => handleCallPhone(item.phone)}
+                          >
+                            <Text style={styles.phoneCallBtnText}>Ara: {item.phone}</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <View style={[styles.phoneCallBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.25)', borderWidth: 1 }]}>
+                            <Text style={[styles.phoneCallBtnText, { color: '#EF4444' }]}>İletişim İzni Yok</Text>
+                          </View>
+                        )
                       )}
                     </View>
+                    {!isPhoneVisible(item.id) && (
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6, fontFamily: FONTS.regular, fontStyle: 'italic' }}>
+                        * Telefon numarasını aramak ve görmek için malikin teklifinizi onaylaması gerekmektedir.
+                      </Text>
+                    )}
 
                     <View style={styles.divider} />
 
@@ -2186,7 +2244,7 @@ export default function ContractorPortal({ onBack }) {
                 <View style={styles.mapStatCol}>
                   <Text style={styles.mapStatLabel}>Başvuru</Text>
                   <Text style={styles.mapStatValue} numberOfLines={1}>
-                    {selectedMapRequest.name || ''} {selectedMapRequest.surname || ''}
+                    {selectedMapRequest.name || ''} {isPhoneVisible(selectedMapRequest.id) ? (selectedMapRequest.surname || '') : (selectedMapRequest.surname ? selectedMapRequest.surname[0] + '.' : '')}
                   </Text>
                 </View>
               </View>
@@ -2221,15 +2279,30 @@ export default function ContractorPortal({ onBack }) {
                 ) : null}
               </ScrollView>
 
+              {!isPhoneVisible(selectedMapRequest.id) && (
+                <Text style={{ fontSize: 10, color: '#94A3B8', marginBottom: 8, textAlign: 'center', fontFamily: FONTS.regular, fontStyle: 'italic' }}>
+                  * İletişim izni için malikin teklifinizi onaylaması bekleniyor.
+                </Text>
+              )}
+
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 {selectedMapRequest.phone && (
-                  <TouchableOpacity
-                    style={[styles.mapCardPhoneBtn, { flex: 1, marginTop: 0, backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.25)' }]}
-                    onPress={() => handleCallPhone(selectedMapRequest.phone)}
-                  >
-                    <Phone size={14} color="#10B981" style={{ marginRight: 6 }} />
-                    <Text style={[styles.mapCardPhoneBtnText, { color: '#10B981' }]}>Ara</Text>
-                  </TouchableOpacity>
+                  isPhoneVisible(selectedMapRequest.id) ? (
+                    <TouchableOpacity
+                      style={[styles.mapCardPhoneBtn, { flex: 1, marginTop: 0, backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.25)' }]}
+                      onPress={() => handleCallPhone(selectedMapRequest.phone)}
+                    >
+                      <Phone size={14} color="#10B981" style={{ marginRight: 6 }} />
+                      <Text style={[styles.mapCardPhoneBtnText, { color: '#10B981' }]}>Ara</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View
+                      style={[styles.mapCardPhoneBtn, { flex: 1, marginTop: 0, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.25)', opacity: 0.8 }]}
+                    >
+                      <Phone size={14} color="#EF4444" style={{ marginRight: 6 }} />
+                      <Text style={[styles.mapCardPhoneBtnText, { color: '#EF4444' }]}>Kilitli</Text>
+                    </View>
+                  )
                 )}
                 {(() => {
                   const existingBid = myBids.find(b => b.submissionId === selectedMapRequest.id);

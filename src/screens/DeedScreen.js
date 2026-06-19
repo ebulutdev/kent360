@@ -125,27 +125,34 @@ export default function DeedScreen({ data, updateData, onNext, onBack, onExit })
   const renderDeedFields = () => {
     // If single building
     if (!isComplex && !isMulti) {
+      const labelText = 'Binanızın bulunduğu Ada ve Parsel numarasını giriniz.';
       return (
         <View style={styles.singleContainer}>
-          <Text style={globalStyles.label}>Ada No</Text>
-          <TextInput
-            style={globalStyles.input}
-            keyboardType="number-pad"
-            placeholder="Ada (Örn: 4210)"
-            placeholderTextColor="#94A3B8"
-            value={singleAda}
-            onChangeText={(val) => handleSingleDeedChange('ada', val)}
-          />
-
-          <Text style={globalStyles.label}>Parsel No</Text>
-          <TextInput
-            style={globalStyles.input}
-            keyboardType="number-pad"
-            placeholder="Parsel (Örn: 12)"
-            placeholderTextColor="#94A3B8"
-            value={singleParsel}
-            onChangeText={(val) => handleSingleDeedChange('parsel', val)}
-          />
+          <View style={{ marginBottom: 12 }}>
+            <Text style={[globalStyles.label, { marginBottom: 10 }]}>{labelText}</Text>
+            <View style={styles.inputsRowContainer}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <TextInput
+                  style={[globalStyles.input, { marginBottom: 0 }]}
+                  keyboardType="number-pad"
+                  placeholder="Ada"
+                  placeholderTextColor="#94A3B8"
+                  value={singleAda}
+                  onChangeText={(val) => handleSingleDeedChange('ada', val)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  style={[globalStyles.input, { marginBottom: 0 }]}
+                  keyboardType="number-pad"
+                  placeholder="Parsel"
+                  placeholderTextColor="#94A3B8"
+                  value={singleParsel}
+                  onChangeText={(val) => handleSingleDeedChange('parsel', val)}
+                />
+              </View>
+            </View>
+          </View>
         </View>
       );
     }
